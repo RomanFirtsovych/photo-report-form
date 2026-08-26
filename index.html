@@ -312,6 +312,7 @@
   /* ─────────────────────────────── надсилання ─────────────────────────────── */
 
   var sending = false;
+  var busyRetries = 0;
 
   function submit() {
     if (sending) return;
@@ -350,10 +351,20 @@
       else $('fallbackSubmit').disabled = false;
 
       if (!res || !res.ok) {
+        // «Таблиця зайнята» — тимчасове. Пробуємо самі, двічі, мовчки:
+        // дані у формі на місці, смикати людину зайвий раз не треба.
+        if (res && res.error === 'busy' && busyRetries < 2) {
+          busyRetries++;
+          if (tg.MainButton) tg.MainButton.showProgress(true);
+          setTimeout(submit, 2500);
+          return;
+        }
+        busyRetries = 0;
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         tg.showAlert((res && res.message) || 'Не вдалося зберегти. Спробуй ще раз.');
         return;
       }
+      busyRetries = 0;
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       if (tg.MainButton) tg.MainButton.hide();
       hide('form'); show('done');
