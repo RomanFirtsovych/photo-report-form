@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Звіт фотографа</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #fff);
+    --text: var(--tg-theme-text-color, #000);
+    --hint: var(--tg-theme-hint-color, #8b8b8b);
+    --link: var(--tg-theme-link-color, #2481cc);
+    --btn: var(--tg-theme-button-color, #2481cc);
+    --btn-text: var(--tg-theme-button-text-color, #fff);
+    --section: var(--tg-theme-secondary-bg-color, #f4f4f5);
+    --danger: #e53935;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 16px 16px 32px;
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--hint); font-size: 14px; margin-bottom: 20px; }
+  .field { margin-bottom: 18px; }
+  label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .tip { color: var(--hint); font-size: 13px; font-weight: 400; margin-top: 2px; }
+  input, textarea, select {
+    width: 100%; padding: 12px 14px; font-size: 17px; font-family: inherit;
+    color: var(--text); background: var(--section);
+    border: 2px solid transparent; border-radius: 10px; outline: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--btn); }
+  input.bad, textarea.bad { border-color: var(--danger); }
+  textarea { min-height: 76px; resize: vertical; }
+  .periodLine {
+    background: var(--section); border-radius: 10px; padding: 10px 14px;
+    font-size: 15px; font-weight: 600; margin-bottom: 18px; text-align: center;
+  }
+  .err { color: var(--danger); font-size: 13px; margin-top: 6px; display: none; }
+  .err.on { display: block; }
+  .notice {
+    background: var(--section); border-radius: 10px; padding: 12px 14px;
+    font-size: 14px; color: var(--hint); margin-bottom: 18px;
+  }
+  .center { text-align: center; padding: 56px 20px; color: var(--hint); }
+  .big { font-size: 44px; margin-bottom: 12px; }
+  .name-list button {
+    display: block; width: 100%; text-align: left; margin-bottom: 8px;
+    padding: 14px; font-size: 17px; font-family: inherit;
+    color: var(--text); background: var(--section);
+    border: 2px solid transparent; border-radius: 10px; cursor: pointer;
+  }
+  .name-list button:active { border-color: var(--btn); }
+  .name-list .city { display: block; font-size: 13px; color: var(--hint); }
+  .fallback {
+    width: 100%; padding: 15px; margin-top: 8px; font-size: 17px; font-weight: 600;
+    font-family: inherit; color: var(--btn-text); background: var(--btn);
+    border: none; border-radius: 10px; cursor: pointer;
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="center">
+  <div class="big">⏳</div>
+  Завантаження…
+</div>
+
+<div id="fatal" class="center hidden">
+  <div class="big">⚠️</div>
+  <div id="fatalText"></div>
+</div>
+
+<!-- Перше відкриття: фотограф обирає себе зі списку -->
+<div id="pick" class="hidden">
+  <h1>Хто ти?</h1>
+  <div class="sub">Обери своє імʼя один раз — далі бот тебе впізнаватиме сам.</div>
+  <div id="pickList" class="name-list"></div>
+  <div id="pickEmpty" class="notice hidden">
+    Усі імена в списку вже зайняті. Звернись до керівника — він додасть тебе в таблицю.
+  </div>
+</div>
+
+<!-- Основна форма -->
+<div id="form" class="hidden">
+  <h1>Місячний звіт</h1>
+  <div class="sub" id="who"></div>
+
+  <div class="periodLine" id="periodLine"></div>
+
+  <div id="editNotice" class="notice hidden"></div>
+
+  <div class="field">
+    <label>Скільки ЖК сфотографовано?<div class="tip">Ціле число</div></label>
+    <input id="zk" type="text" inputmode="numeric" placeholder="0">
+    <div class="err" id="err_zk"></div>
+  </div>
+
+  <div class="field">
+    <label>Скільки нових/відновлених будівництв знайдено?<div class="tip">Якщо жодного — 0</div></label>
+    <input id="buildings" type="text" inputmode="numeric" placeholder="0">
+    <div class="err" id="err_buildings"></div>
+  </div>
+
+  <div class="field">
+    <label>Скільки ЖК мали більше 20 ракурсів?<div class="tip">Якщо жодного — 0</div></label>
+    <input id="a20" type="text" inputmode="numeric" placeholder="0">
+    <div class="err" id="err_a20"></div>
+  </div>
+
+  <div class="field">
+    <label>Скільки ЖК мали більше 15 ракурсів?<div class="tip">Якщо жодного — 0</div></label>
+    <input id="a15" type="text" inputmode="numeric" placeholder="0">
+    <div class="err" id="err_a15"></div>
+  </div>
+
+  <div class="field">
+    <label>Витрати на транспорт, грн<div class="tip">Напр. 1450 або 1450.50</div></label>
+    <input id="transport" type="text" inputmode="decimal" placeholder="0">
+    <div class="err" id="err_transport"></div>
+  </div>
+
+  <div class="field">
+    <label>Якщо були інші витрати — вкажи суму, грн<div class="tip">Якщо не було — 0</div></label>
+    <input id="other" type="text" inputmode="decimal" placeholder="0">
+    <div class="err" id="err_other"></div>
+  </div>
+
+  <div class="field hidden" id="commentField">
+    <label>На що були інші витрати<div class="tip">Коротко, кілька слів</div></label>
+    <textarea id="comment" placeholder="Напр. друк макетів"></textarea>
+    <div class="err" id="err_comment"></div>
+  </div>
+
+  <button id="fallbackSubmit" class="fallback hidden">Надіслати звіт</button>
+</div>
+
+<div id="done" class="center hidden">
+  <div class="big">✅</div>
+  <div id="doneText"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ⚠️ Встав сюди URL веб-апки Apps Script (закінчується на /exec)
+  var API = 'PASTE_APPS_SCRIPT_EXEC_URL_HERE';
+
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var state = { period: null };
+  var FIELDS = ['zk', 'buildings', 'a20', 'a15', 'transport', 'other', 'comment'];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var show = function (id) { $(id).classList.remove('hidden'); };
+  var hide = function (id) { $(id).classList.add('hidden'); };
+
+  if (!tg || !tg.initData) {
+    hide('loading'); show('fatal');
+    $('fatalText').textContent = 'Цю форму треба відкривати з Telegram — через кнопку в групі.';
+    return;
+  }
+  tg.ready();
+  tg.expand();
+
+  /* ─────────────────────────── зв'язок з бекендом ─────────────────────────── */
+
+  function api(action, extra, cb) {
+    var body = { __miniapp: 1, action: action, initData: tg.initData };
+    for (var k in extra) if (extra.hasOwnProperty(k)) body[k] = extra[k];
+
+    fetch(API, {
+      method: 'POST',
+      // text/plain — щоб браузер не слав preflight, який Apps Script не обробляє
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body),
+      redirect: 'follow'
+    })
+      .then(function (r) { return r.json(); })
+      .then(cb)
+      .catch(function (e) {
+        hide('loading'); show('fatal');
+        $('fatalText').textContent = 'Немає звʼязку з сервером. Перевір інтернет і спробуй ще раз.';
+      });
+  }
+
+  /* ──────────────────────────────── старт ──────────────────────────────── */
+
+  api('init', {}, function (res) {
+    hide('loading');
+    if (!res || !res.ok) {
+      show('fatal');
+      $('fatalText').textContent = (res && res.message) || 'Не вдалося завантажити форму.';
+      return;
+    }
+    if (!res.bound) { renderPick(res.candidates || []); return; }
+    startForm(res);
+  });
+
+  /* ────────────────────────── вибір себе зі списку ────────────────────────── */
+
+  function renderPick(list) {
+    show('pick');
+    if (!list.length) { show('pickEmpty'); return; }
+
+    var box = $('pickList');
+    list.forEach(function (p) {
+      var b = document.createElement('button');
+      b.innerHTML = '';
+      b.appendChild(document.createTextNode(p.name));
+      if (p.city) {
+        var c = document.createElement('span');
+        c.className = 'city';
+        c.textContent = p.city;
+        b.appendChild(c);
+      }
+      b.onclick = function () {
+        b.disabled = true;
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        api('bind', { row: p.row }, function (res) {
+          if (!res || !res.ok) {
+            b.disabled = false;
+            tg.showAlert((res && res.message) || 'Не вдалося привʼязати.');
+            return;
+          }
+          hide('pick');
+          show('loading');
+          api('init', {}, function (r2) {
+            hide('loading');
+            if (r2 && r2.ok && r2.bound) startForm(r2);
+            else { show('fatal'); $('fatalText').textContent = 'Привʼязано, але форма не завантажилась. Відкрий заново.'; }
+          });
+        });
+      };
+      box.appendChild(b);
+    });
+  }
+
+  /* ──────────────────────────────── форма ──────────────────────────────── */
+
+  function startForm(res) {
+    show('form');
+    $('who').textContent = res.name + (res.city ? ' · ' + res.city : '');
+    state.period = res.period.value;
+    $('periodLine').textContent = 'Звіт за ' + res.period.label;
+
+    var r = res.report;
+    if (r) {
+      $('editNotice').classList.remove('hidden');
+      $('editNotice').textContent = 'Звіт за цей місяць уже є (оновлено ' + r.updated +
+        '). Поля підставлені — зміни й надішли, старий буде перезаписаний.';
+      FIELDS.forEach(function (id) {
+        if (r[id] !== undefined && r[id] !== null) $(id).value = r[id];
+      });
+    }
+
+    $('other').addEventListener('input', toggleComment);
+    FIELDS.forEach(function (id) {
+      $(id).addEventListener('input', function () { clearErr(id); });
+    });
+    toggleComment();
+
+    if (tg.MainButton) {
+      tg.MainButton.setText('Надіслати звіт');
+      tg.MainButton.onClick(submit);
+      tg.MainButton.show();
+    } else {
+      show('fallbackSubmit');
+      $('fallbackSubmit').onclick = submit;
+    }
+  }
+
+  function toggleComment() {
+    var v = parseFloat(String($('other').value).replace(',', '.'));
+    if (v > 0) $('commentField').classList.remove('hidden');
+    else { $('commentField').classList.add('hidden'); clearErr('comment'); }
+  }
+
+  /* ─────────────────────────────── валідація ─────────────────────────────── */
+
+  function setErr(id, msg) {
+    $(id).classList.add('bad');
+    $('err_' + id).textContent = msg;
+    $('err_' + id).classList.add('on');
+  }
+  function clearErr(id) {
+    $(id).classList.remove('bad');
+    var e = $('err_' + id);
+    if (e) e.classList.remove('on');
+  }
+
+  function readCount(id) {
+    var t = String($(id).value).trim().replace(/[\s ]/g, '');
+    if (t === '') { setErr(id, 'Заповни поле. Якщо нічого не було — постав 0'); return null; }
+    if (!/^\d{1,5}$/.test(t)) { setErr(id, 'Тільки ціле число, напр. 12'); return null; }
+    if (parseInt(t, 10) > 2000) { setErr(id, 'Забагато — перевір, чи не помилка'); return null; }
+    return parseInt(t, 10);
+  }
+  function readMoney(id) {
+    var t = String($(id).value).trim().replace(/[\s ]/g, '').replace(',', '.');
+    if (t === '') { setErr(id, 'Заповни поле. Якщо витрат не було — постав 0'); return null; }
+    if (!/^\d{1,7}(\.\d{1,2})?$/.test(t)) { setErr(id, 'Сума в гривнях, напр. 1450 або 1450.50'); return null; }
+    var n = parseFloat(t);
+    if (n > 200000) { setErr(id, 'Забагато — перевір, чи не помилка'); return null; }
+    return n;
+  }
+
+  /* ─────────────────────────────── надсилання ─────────────────────────────── */
+
+  var sending = false;
+
+  function submit() {
+    if (sending) return;
+
+    var v = {
+      zk: readCount('zk'),
+      buildings: readCount('buildings'),
+      a20: readCount('a20'),
+      a15: readCount('a15'),
+      transport: readMoney('transport'),
+      other: readMoney('other')
+    };
+    var bad = Object.keys(v).some(function (k) { return v[k] === null; });
+
+    var comment = String($('comment').value).trim();
+    if (!bad && v.other > 0 && comment.length < 3) {
+      setErr('comment', 'Напиши кілька слів, на що пішли ці гроші');
+      bad = true;
+    }
+    if (bad) {
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+      var firstBad = document.querySelector('.bad');
+      if (firstBad) firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    sending = true;
+    if (tg.MainButton) { tg.MainButton.showProgress(true); tg.MainButton.disable(); }
+    else $('fallbackSubmit').disabled = true;
+
+    v.comment = comment;
+
+    api('submit', { payload: v }, function (res) {
+      sending = false;
+      if (tg.MainButton) { tg.MainButton.hideProgress(); tg.MainButton.enable(); }
+      else $('fallbackSubmit').disabled = false;
+
+      if (!res || !res.ok) {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        tg.showAlert((res && res.message) || 'Не вдалося зберегти. Спробуй ще раз.');
+        return;
+      }
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      if (tg.MainButton) tg.MainButton.hide();
+      hide('form'); show('done');
+      $('doneText').textContent = res.updated
+        ? 'Звіт за ' + res.label + ' оновлено.'
+        : 'Звіт за ' + res.label + ' прийнято. Дякую!';
+      setTimeout(function () { tg.close(); }, 1800);
+    });
+  }
+})();
+</script>
+</body>
+</html>
