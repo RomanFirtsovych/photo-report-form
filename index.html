@@ -47,6 +47,7 @@
   }
   .center { text-align: center; padding: 56px 20px; color: var(--hint); }
   .big { font-size: 44px; margin-bottom: 12px; }
+  #pickSearch { margin-bottom: 14px; }
   .name-list button {
     display: block; width: 100%; text-align: left; margin-bottom: 8px;
     padding: 14px; font-size: 17px; font-family: inherit;
@@ -79,6 +80,7 @@
 <div id="pick" class="hidden">
   <h1>Хто ти?</h1>
   <div class="sub">Обери своє імʼя один раз — далі бот тебе впізнаватиме сам.</div>
+  <input id="pickSearch" type="text" placeholder="Почни вводити прізвище…" autocomplete="off">
   <div id="pickList" class="name-list"></div>
   <div id="pickEmpty" class="notice hidden">
     Усі імена в списку вже зайняті. Звернись до керівника — він додасть тебе в таблицю.
@@ -148,7 +150,6 @@
 (function () {
   'use strict';
 
-  // ⚠️ Встав сюди URL веб-апки Apps Script (закінчується на /exec)
   var API = 'https://script.google.com/macros/s/AKfycbxEknWI_qIV0jROjU8lL_6IiFdH6ejn_3Ae8PGbNY-HkE7fa2-GchtEKWmYpphss12q/exec';
 
   var tg = window.Telegram && window.Telegram.WebApp;
@@ -205,23 +206,26 @@
 
   function renderPick(list) {
     show('pick');
-    if (!list.length) { show('pickEmpty'); return; }
+    if (!list.length) { hide('pickSearch'); show('pickEmpty'); return; }
 
     var box = $('pickList');
+
+    // Список на 30 імен без пошуку — це багато гортання.
+    $('pickSearch').addEventListener('input', function () {
+      var q = this.value.trim().toLowerCase();
+      for (var i = 0; i < box.children.length; i++) {
+        var el = box.children[i];
+        el.style.display = (!q || el.textContent.toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+      }
+    });
+
     list.forEach(function (p) {
       var b = document.createElement('button');
-      b.innerHTML = '';
       b.appendChild(document.createTextNode(p.name));
-      if (p.city) {
-        var c = document.createElement('span');
-        c.className = 'city';
-        c.textContent = p.city;
-        b.appendChild(c);
-      }
       b.onclick = function () {
         b.disabled = true;
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        api('bind', { row: p.row }, function (res) {
+        api('bind', { userId: p.userId }, function (res) {
           if (!res || !res.ok) {
             b.disabled = false;
             tg.showAlert((res && res.message) || 'Не вдалося привʼязати.');
@@ -244,7 +248,7 @@
 
   function startForm(res) {
     show('form');
-    $('who').textContent = res.name + (res.city ? ' · ' + res.city : '');
+    $('who').textContent = res.name;
     state.period = res.period.value;
     $('periodLine').textContent = 'Звіт за ' + res.period.label;
 
