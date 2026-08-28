@@ -107,6 +107,33 @@
     to   { opacity: 1; transform: none; }
   }
 
+  .priceList {
+    background: var(--section); border-radius: 12px;
+    padding: 11px 13px; margin-bottom: 14px; font-size: 13px; color: var(--hint);
+  }
+  .priceList .head { font-weight: 700; color: var(--text); margin-bottom: 6px; font-size: 13px; }
+  .priceList .row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+  .priceList .row b { color: var(--brand); white-space: nowrap; }
+
+  .bonusRow {
+    background: var(--section); border-radius: 12px;
+    padding: 10px; margin-bottom: 10px;
+  }
+  .bonusRow .top { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .bonusRow .amt { flex: 1 1 auto; background: var(--bg); }
+  .bonusRow .why { background: var(--bg); }
+  .bonusRow .del {
+    flex: 0 0 auto; width: 46px; height: 49px; font-size: 22px; line-height: 1;
+    background: transparent; color: var(--hint);
+    border: none; border-radius: 12px; cursor: pointer; font-family: inherit;
+  }
+  .bonusRow .del:active { background: var(--danger-soft); color: var(--danger); }
+  .addRow {
+    width: 100%; padding: 12px; font-size: 15px; font-weight: 600; font-family: inherit;
+    color: var(--brand); background: var(--brand-soft);
+    border: none; border-radius: 12px; cursor: pointer; margin-bottom: 6px;
+  }
+
   .sectionLabel {
     font-size: 12.5px; text-transform: uppercase; letter-spacing: .07em;
     color: var(--hint); font-weight: 700; margin: 26px 0 12px;
@@ -210,6 +237,24 @@
 
   <div id="metrics"></div>
 
+  <div class="sectionLabel">Бонуси</div>
+
+  <div class="gate" id="bonusGate">
+    <div class="q">Чи є за що нарахувати бонус?</div>
+    <div class="h">Знайдені обʼєкти, термінові чи повторні виїзди, правки — будь-що</div>
+    <div class="toggle">
+      <button type="button" class="no" id="bonusNo">Ні</button>
+      <button type="button" class="yes" id="bonusYes">Так</button>
+    </div>
+  </div>
+
+  <div id="bonusBody" class="groupBody gated hidden">
+    <div class="priceList" id="priceList"></div>
+    <div id="bonusRows"></div>
+    <button type="button" class="addRow" id="addBonus">+ Додати ще бонус</button>
+    <div class="err" id="err_bonus"></div>
+  </div>
+
   <div class="sectionLabel">Витрати</div>
 
   <div class="field">
@@ -264,7 +309,7 @@
   var API = 'https://script.google.com/macros/s/AKfycbxEknWI_qIV0jROjU8lL_6IiFdH6ejn_3Ae8PGbNY-HkE7fa2-GchtEKWmYpphss12q/exec';
 
   var tg = window.Telegram && window.Telegram.WebApp;
-  var state = { fields: [], groups: [], open: {}, gates: {}, otherOpen: false, roundUpTo: 0, noRate: false };
+  var state = { fields: [], groups: [], open: {}, gates: {}, otherOpen: false, bonusOpen: false, roundUpTo: 0, noRate: false };
 
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id) { $(id).classList.remove('hidden'); };
@@ -466,6 +511,9 @@
       });
     }
 
+    renderPriceList(res.bonusHints || []);
+    initBonuses(r);
+
     ['transport', 'other'].forEach(function (k) {
       $(k).addEventListener('input', function () { clearErr(k); recalc(); });
     });
@@ -538,6 +586,103 @@
     return wrap;
   }
 
+  /* ──────────────────────────── бонуси ──────────────────────────── */
+
+  function renderPriceList(hints) {
+    var box = $('priceList');
+    box.textContent = '';
+    if (!hints.length) return;
+
+    var h = document.createElement('div');
+    h.className = 'head';
+    h.textContent = 'Скільки за що нараховують';
+    box.appendChild(h);
+
+    hints.forEach(function (x) {
+      var row = document.createElement('div');
+      row.className = 'row';
+      var l = document.createElement('span');
+      l.textContent = x.label;
+      var a = document.createElement('b');
+      a.textContent = x.amount + ' грн';
+      row.appendChild(l); row.appendChild(a);
+      box.appendChild(row);
+    });
+  }
+
+  function addBonusRow(amount, why) {
+    var wrap = document.createElement('div');
+    wrap.className = 'bonusRow';
+
+    var amt = document.createElement('input');
+    amt.className = 'amt'; amt.type = 'text'; amt.inputMode = 'decimal';
+    amt.placeholder = 'Сума, грн'; amt.value = amount || '';
+    amt.addEventListener('input', function () { clearErr('bonus'); recalc(); });
+
+    var why2 = document.createElement('input');
+    why2.className = 'why'; why2.type = 'text';
+    why2.placeholder = 'За що? Який ЖК, що саме';
+    why2.value = why || '';
+    why2.addEventListener('input', function () { clearErr('bonus'); });
+
+    var del = document.createElement('button');
+    del.type = 'button'; del.className = 'del'; del.textContent = '×';
+    del.onclick = function () {
+      wrap.parentNode.removeChild(wrap);
+      if (!$('bonusRows').children.length) addBonusRow('', '');
+      recalc();
+    };
+
+    var top = document.createElement('div');
+    top.className = 'top';
+    top.appendChild(amt); top.appendChild(del);
+
+    wrap.appendChild(top); wrap.appendChild(why2);
+    $('bonusRows').appendChild(wrap);
+    return wrap;
+  }
+
+  function readBonuses() {
+    var rows = $('bonusRows').children;
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+      out.push({
+        amount: rows[i].children[0].children[0].value,   // top > amt
+        why: rows[i].children[1].value,                  // why
+        _el: rows[i]
+      });
+    }
+    return out;
+  }
+
+  function initBonuses(r) {
+    var setB = function (open) {
+      state.bonusOpen = open;
+      $('bonusGate').classList.toggle('open', open);
+      $('bonusYes').classList.toggle('on', open);
+      $('bonusNo').classList.toggle('on', !open);
+      $('bonusBody').classList.toggle('hidden', !open);
+      if (!open) {
+        $('bonusRows').textContent = '';
+        addBonusRow('', '');
+        clearErr('bonus');
+      }
+      recalc();
+    };
+    $('bonusYes').onclick = function () { setB(true); };
+    $('bonusNo').onclick = function () { setB(false); };
+    $('addBonus').onclick = function () { addBonusRow('', ''); };
+
+    var existing = (r && r.bonuses) || [];
+    if (existing.length) {
+      existing.forEach(function (b) { addBonusRow(b.amount, b.why); });
+      setB(true);
+    } else {
+      addBonusRow('', '');
+      setB(false);
+    }
+  }
+
   /* ───────────────────── живий підрахунок суми ───────────────────── */
 
   /** Число з поля, без валідації: для живого підрахунку сміття = 0. */
@@ -569,6 +714,12 @@
       sum += s2;
       if (line) line.textContent = (n > 0 && f.per > 0) ? ('= ' + money(s2) + ' грн') : '';
     });
+    if (state.bonusOpen) {
+      readBonuses().forEach(function (b) {
+        var n = parseFloat(String(b.amount).replace(',', '.'));
+        if (!isNaN(n) && n > 0) sum += n;
+      });
+    }
     sum += num('transport') + (state.otherOpen ? num('other') : 0);
 
     var rounded = sum;
@@ -583,13 +734,17 @@
 
   /* ─────────────────────────── валідація ─────────────────────────── */
 
+  // Поля з таким id може не бути (напр. 'bonus' — це блок, а не одне поле),
+  // тому обидві функції мають переживати його відсутність.
   function setErr(id, msg) {
-    $(id).classList.add('bad');
-    $('err_' + id).textContent = msg;
-    $('err_' + id).classList.add('on');
+    var f = $(id);
+    if (f) f.classList.add('bad');
+    var e = $('err_' + id);
+    if (e) { e.textContent = msg; e.classList.add('on'); }
   }
   function clearErr(id) {
-    $(id).classList.remove('bad');
+    var f = $(id);
+    if (f) f.classList.remove('bad');
     var e = $('err_' + id);
     if (e) e.classList.remove('on');
   }
@@ -638,6 +793,32 @@
       var firstBad = document.querySelector('.bad');
       if (firstBad) firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
+    }
+
+    v.bonuses = [];
+    if (state.bonusOpen) {
+      var bs = readBonuses();
+      for (var i = 0; i < bs.length; i++) {
+        var raw = String(bs[i].amount).trim().replace(',', '.');
+        var why = String(bs[i].why).trim();
+        if (!raw && !why) continue;                       // порожній рядок — пропускаємо
+        var n = parseFloat(raw);
+        if (!raw || isNaN(n) || n <= 0) {
+          setErr('bonus', 'Вкажи суму бонусу числом, напр. 300');
+          bs[i]._el.children[0].children[0].classList.add('bad');
+          bad = true; continue;
+        }
+        if (why.length < 3) {
+          setErr('bonus', 'Напиши, за що бонус — який ЖК і що саме');
+          bs[i]._el.children[1].classList.add('bad');
+          bad = true; continue;
+        }
+        v.bonuses.push({ amount: n, why: why });
+      }
+      if (bad) {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        return;
+      }
     }
 
     v.transport = t; v.other = o; v.comment = comment;
