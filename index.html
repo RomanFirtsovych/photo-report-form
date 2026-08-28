@@ -10,115 +10,105 @@
     --bg: var(--tg-theme-bg-color, #fff);
     --text: var(--tg-theme-text-color, #000);
     --hint: var(--tg-theme-hint-color, #8b8b8b);
-    --link: var(--tg-theme-link-color, #2481cc);
     --btn: var(--tg-theme-button-color, #2481cc);
     --btn-text: var(--tg-theme-button-text-color, #fff);
     --section: var(--tg-theme-secondary-bg-color, #f4f4f5);
     --danger: #e53935;
+    --ok: #2e9e6b;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    margin: 0; padding: 16px 16px 32px;
+    margin: 0; padding: 16px 16px 120px;
     font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg); color: var(--text);
   }
   h1 { font-size: 20px; margin: 0 0 4px; }
-  .sub { color: var(--hint); font-size: 14px; margin-bottom: 20px; }
-  .field { margin-bottom: 18px; }
+  .sub { color: var(--hint); font-size: 14px; margin-bottom: 16px; }
+  .periodLine {
+    background: var(--section); border-radius: 10px; padding: 10px 14px;
+    font-size: 15px; font-weight: 600; margin-bottom: 16px; text-align: center;
+  }
+  .field { margin-bottom: 16px; }
   label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 6px; }
   .tip { color: var(--hint); font-size: 13px; font-weight: 400; margin-top: 2px; }
-  input, textarea, select {
+  .per { color: var(--ok); font-weight: 600; }
+  input, textarea {
     width: 100%; padding: 12px 14px; font-size: 17px; font-family: inherit;
     color: var(--text); background: var(--section);
     border: 2px solid transparent; border-radius: 10px; outline: none;
   }
-  input:focus, textarea:focus, select:focus { border-color: var(--btn); }
+  input:focus, textarea:focus { border-color: var(--btn); }
   input.bad, textarea.bad { border-color: var(--danger); }
   textarea { min-height: 76px; resize: vertical; }
-  .periodLine {
-    background: var(--section); border-radius: 10px; padding: 10px 14px;
-    font-size: 15px; font-weight: 600; margin-bottom: 18px; text-align: center;
-  }
   .err { color: var(--danger); font-size: 13px; margin-top: 6px; display: none; }
   .err.on { display: block; }
   .notice {
     background: var(--section); border-radius: 10px; padding: 12px 14px;
-    font-size: 14px; color: var(--hint); margin-bottom: 18px;
+    font-size: 14px; color: var(--hint); margin-bottom: 16px;
   }
+  .notice.warn { color: var(--danger); }
+  .divider { height: 1px; background: var(--section); margin: 22px 0 18px; }
+  .divider-label {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--hint); margin: 22px 0 12px;
+  }
+  .total {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--bg); border-top: 1px solid var(--section);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    font-size: 15px;
+  }
+  .total .row { display: flex; justify-content: space-between; align-items: baseline; }
+  .total .big { font-size: 22px; font-weight: 700; }
+  .total .hintline { color: var(--hint); font-size: 12px; margin-top: 2px; }
   .center { text-align: center; padding: 56px 20px; color: var(--hint); }
-  .big { font-size: 44px; margin-bottom: 12px; }
-  #pickSearch { margin-bottom: 14px; }
+  .big-emoji { font-size: 44px; margin-bottom: 12px; }
   .name-list button {
     display: block; width: 100%; text-align: left; margin-bottom: 8px;
     padding: 14px; font-size: 17px; font-family: inherit;
     color: var(--text); background: var(--section);
     border: 2px solid transparent; border-radius: 10px; cursor: pointer;
   }
-  .name-list button:active { border-color: var(--btn); }
-  .name-list .city { display: block; font-size: 13px; color: var(--hint); }
+  #pickSearch { margin-bottom: 14px; }
   .fallback {
     width: 100%; padding: 15px; margin-top: 8px; font-size: 17px; font-weight: 600;
     font-family: inherit; color: var(--btn-text); background: var(--btn);
     border: none; border-radius: 10px; cursor: pointer;
   }
+  .breakdown { text-align: left; font-size: 14px; line-height: 1.7; margin-top: 14px; }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
 
-<div id="loading" class="center">
-  <div class="big">⏳</div>
-  Завантаження…
-</div>
+<div id="loading" class="center"><div class="big-emoji">⏳</div>Завантаження…</div>
 
 <div id="fatal" class="center hidden">
-  <div class="big">⚠️</div>
+  <div class="big-emoji">⚠️</div>
   <div id="fatalText"></div>
 </div>
 
-<!-- Перше відкриття: фотограф обирає себе зі списку -->
 <div id="pick" class="hidden">
   <h1>Хто ти?</h1>
   <div class="sub">Обери своє імʼя один раз — далі бот тебе впізнаватиме сам.</div>
   <input id="pickSearch" type="text" placeholder="Почни вводити прізвище…" autocomplete="off">
   <div id="pickList" class="name-list"></div>
   <div id="pickEmpty" class="notice hidden">
-    Усі імена в списку вже зайняті. Звернись до керівника — він додасть тебе в таблицю.
+    Твого імені немає у списку вільних. Можливо, ти вже обрав себе раніше
+    з іншого акаунта. Звернись до керівника.
   </div>
 </div>
 
-<!-- Основна форма -->
 <div id="form" class="hidden">
   <h1>Місячний звіт</h1>
   <div class="sub" id="who"></div>
-
   <div class="periodLine" id="periodLine"></div>
-
   <div id="editNotice" class="notice hidden"></div>
+  <div id="rateNotice" class="notice warn hidden"></div>
 
-  <div class="field">
-    <label>Скільки ЖК сфотографовано?<div class="tip">Ціле число</div></label>
-    <input id="zk" type="text" inputmode="numeric" placeholder="0">
-    <div class="err" id="err_zk"></div>
-  </div>
+  <div id="metrics"></div>
 
-  <div class="field">
-    <label>Скільки нових/відновлених будівництв знайдено?<div class="tip">Якщо жодного — 0</div></label>
-    <input id="buildings" type="text" inputmode="numeric" placeholder="0">
-    <div class="err" id="err_buildings"></div>
-  </div>
-
-  <div class="field">
-    <label>Скільки ЖК мали більше 20 ракурсів?<div class="tip">Якщо жодного — 0</div></label>
-    <input id="a20" type="text" inputmode="numeric" placeholder="0">
-    <div class="err" id="err_a20"></div>
-  </div>
-
-  <div class="field">
-    <label>Скільки ЖК мали більше 15 ракурсів?<div class="tip">Якщо жодного — 0</div></label>
-    <input id="a15" type="text" inputmode="numeric" placeholder="0">
-    <div class="err" id="err_a15"></div>
-  </div>
+  <div class="divider-label">Витрати</div>
 
   <div class="field">
     <label>Витрати на транспорт, грн<div class="tip">Напр. 1450 або 1450.50</div></label>
@@ -134,41 +124,52 @@
 
   <div class="field hidden" id="commentField">
     <label>На що були інші витрати<div class="tip">Коротко, кілька слів</div></label>
-    <textarea id="comment" placeholder="Напр. друк макетів"></textarea>
+    <textarea id="comment" placeholder="Напр. корм"></textarea>
     <div class="err" id="err_comment"></div>
   </div>
 
   <button id="fallbackSubmit" class="fallback hidden">Надіслати звіт</button>
 </div>
 
+<div id="totalBar" class="total hidden">
+  <div class="row">
+    <span>Разом до виплати</span>
+    <span class="big" id="totalValue">0 грн</span>
+  </div>
+  <div class="hintline" id="totalHint"></div>
+</div>
+
 <div id="done" class="center hidden">
-  <div class="big">✅</div>
+  <div class="big-emoji">✅</div>
   <div id="doneText"></div>
+  <div class="breakdown" id="doneBreakdown"></div>
 </div>
 
 <script>
 (function () {
   'use strict';
 
+  // ⚠️ Встав сюди URL веб-апки Apps Script (закінчується на /exec)
   var API = 'https://script.google.com/macros/s/AKfycbxEknWI_qIV0jROjU8lL_6IiFdH6ejn_3Ae8PGbNY-HkE7fa2-GchtEKWmYpphss12q/exec';
 
   var tg = window.Telegram && window.Telegram.WebApp;
-  var state = { period: null };
-  var FIELDS = ['zk', 'buildings', 'a20', 'a15', 'transport', 'other', 'comment'];
+  var state = { fields: [], roundUpTo: 0, noRate: false };
 
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id) { $(id).classList.remove('hidden'); };
   var hide = function (id) { $(id).classList.add('hidden'); };
+  var money = function (v) {
+    var n = Math.round((Number(v) || 0) * 100) / 100;
+    return (n % 1 === 0 ? String(n) : n.toFixed(2));
+  };
 
   if (!tg || !tg.initData) {
     hide('loading'); show('fatal');
-    $('fatalText').textContent = 'Цю форму треба відкривати з Telegram — через кнопку в групі.';
+    $('fatalText').textContent = 'Цю форму треба відкривати з Telegram — через кнопку в робочому чаті.';
     return;
   }
   tg.ready();
   tg.expand();
-
-  /* ─────────────────────────── зв'язок з бекендом ─────────────────────────── */
 
   function api(action, extra, cb) {
     var body = { __miniapp: 1, action: action, initData: tg.initData };
@@ -176,20 +177,17 @@
 
     fetch(API, {
       method: 'POST',
-      // text/plain — щоб браузер не слав preflight, який Apps Script не обробляє
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body),
       redirect: 'follow'
     })
       .then(function (r) { return r.json(); })
       .then(cb)
-      .catch(function (e) {
+      .catch(function () {
         hide('loading'); show('fatal');
         $('fatalText').textContent = 'Немає звʼязку з сервером. Перевір інтернет і спробуй ще раз.';
       });
   }
-
-  /* ──────────────────────────────── старт ──────────────────────────────── */
 
   api('init', {}, function (res) {
     hide('loading');
@@ -202,15 +200,13 @@
     startForm(res);
   });
 
-  /* ────────────────────────── вибір себе зі списку ────────────────────────── */
+  /* ────────────────────── вибір себе зі списку ────────────────────── */
 
   function renderPick(list) {
     show('pick');
     if (!list.length) { hide('pickSearch'); show('pickEmpty'); return; }
 
     var box = $('pickList');
-
-    // Список на 30 імен без пошуку — це багато гортання.
     $('pickSearch').addEventListener('input', function () {
       var q = this.value.trim().toLowerCase();
       for (var i = 0; i < box.children.length; i++) {
@@ -225,14 +221,13 @@
       b.onclick = function () {
         b.disabled = true;
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        api('bind', { userId: p.userId }, function (res) {
-          if (!res || !res.ok) {
+        api('bind', { userId: p.userId }, function (r) {
+          if (!r || !r.ok) {
             b.disabled = false;
-            tg.showAlert((res && res.message) || 'Не вдалося привʼязати.');
+            tg.showAlert((r && r.message) || 'Не вдалося привʼязати.');
             return;
           }
-          hide('pick');
-          show('loading');
+          hide('pick'); show('loading');
           api('init', {}, function (r2) {
             hide('loading');
             if (r2 && r2.ok && r2.bound) startForm(r2);
@@ -244,29 +239,79 @@
     });
   }
 
-  /* ──────────────────────────────── форма ──────────────────────────────── */
+  /* ──────────────────────────── форма ──────────────────────────── */
 
   function startForm(res) {
     show('form');
+    show('totalBar');
     $('who').textContent = res.name;
-    state.period = res.period.value;
     $('periodLine').textContent = 'Звіт за ' + res.period.label;
+    state.fields = res.fields || [];
+    state.roundUpTo = res.roundUpTo || 0;
+    state.noRate = !!res.noRate;
+
+    if (state.noRate) {
+      $('rateNotice').classList.remove('hidden');
+      $('rateNotice').textContent = 'Твоя ставка за 1 ЖК ще не заведена — сума порахується без неї. ' +
+        'Звіт усе одно подавай, керівник це побачить.';
+    }
+
+    var box = $('metrics');
+    state.fields.forEach(function (f) {
+      var wrap = document.createElement('div');
+      wrap.className = 'field';
+
+      var lab = document.createElement('label');
+      lab.appendChild(document.createTextNode(f.label));
+
+      var tip = document.createElement('div');
+      tip.className = 'tip';
+      tip.appendChild(document.createTextNode(f.hint));
+      if (f.per > 0) {
+        tip.appendChild(document.createTextNode(' · '));
+        var per = document.createElement('span');
+        per.className = 'per';
+        per.textContent = f.per + ' грн за кожен';
+        tip.appendChild(per);
+      }
+      lab.appendChild(tip);
+
+      var inp = document.createElement('input');
+      inp.id = f.key;
+      inp.type = 'text';
+      inp.inputMode = 'numeric';
+      inp.placeholder = '0';
+      inp.addEventListener('input', function () { clearErr(f.key); recalc(); });
+
+      var err = document.createElement('div');
+      err.className = 'err';
+      err.id = 'err_' + f.key;
+
+      wrap.appendChild(lab); wrap.appendChild(inp); wrap.appendChild(err);
+      box.appendChild(wrap);
+    });
 
     var r = res.report;
     if (r) {
       $('editNotice').classList.remove('hidden');
       $('editNotice').textContent = 'Звіт за цей місяць уже є (оновлено ' + r.updated +
         '). Поля підставлені — зміни й надішли, старий буде перезаписаний.';
-      FIELDS.forEach(function (id) {
-        if (r[id] !== undefined && r[id] !== null) $(id).value = r[id];
+      state.fields.forEach(function (f) {
+        if (r[f.key] !== undefined && r[f.key] !== null && r[f.key] !== '') $(f.key).value = r[f.key];
+      });
+      ['transport', 'other', 'comment'].forEach(function (k) {
+        if (r[k] !== undefined && r[k] !== null && r[k] !== '') $(k).value = r[k];
       });
     }
 
-    $('other').addEventListener('input', toggleComment);
-    FIELDS.forEach(function (id) {
-      $(id).addEventListener('input', function () { clearErr(id); });
+    ['transport', 'other'].forEach(function (k) {
+      $(k).addEventListener('input', function () { clearErr(k); recalc(); });
     });
+    $('other').addEventListener('input', toggleComment);
+    $('comment').addEventListener('input', function () { clearErr('comment'); });
+
     toggleComment();
+    recalc();
 
     if (tg.MainButton) {
       tg.MainButton.setText('Надіслати звіт');
@@ -284,7 +329,30 @@
     else { $('commentField').classList.add('hidden'); clearErr('comment'); }
   }
 
-  /* ─────────────────────────────── валідація ─────────────────────────────── */
+  /* ───────────────────── живий підрахунок суми ───────────────────── */
+
+  function num(id) {
+    var t = String($(id).value).trim().replace(/[\s ]/g, '').replace(',', '.');
+    var n = parseFloat(t);
+    return isNaN(n) || n < 0 ? 0 : n;
+  }
+
+  function recalc() {
+    var sum = 0;
+    state.fields.forEach(function (f) { sum += num(f.key) * (f.per || 0); });
+    sum += num('transport') + num('other');
+
+    var rounded = sum;
+    if (state.roundUpTo > 0) rounded = Math.ceil(sum / state.roundUpTo) * state.roundUpTo;
+
+    $('totalValue').textContent = money(rounded) + ' грн';
+    var bits = [];
+    if (rounded > sum) bits.push('округлено вгору з ' + money(sum));
+    if (state.noRate) bits.push('без ставки за ЖК');
+    $('totalHint').textContent = bits.join(' · ');
+  }
+
+  /* ─────────────────────────── валідація ─────────────────────────── */
 
   function setErr(id, msg) {
     $(id).classList.add('bad');
@@ -299,40 +367,38 @@
 
   function readCount(id) {
     var t = String($(id).value).trim().replace(/[\s ]/g, '');
-    if (t === '') { setErr(id, 'Заповни поле. Якщо нічого не було — постав 0'); return null; }
-    if (!/^\d{1,5}$/.test(t)) { setErr(id, 'Тільки ціле число, напр. 12'); return null; }
+    if (t === '') return 0;                        // порожнє = нуль, не примушуємо
+    if (!/^\d{1,5}$/.test(t)) { setErr(id, 'Тільки ціле число'); return null; }
     if (parseInt(t, 10) > 2000) { setErr(id, 'Забагато — перевір, чи не помилка'); return null; }
     return parseInt(t, 10);
   }
   function readMoney(id) {
     var t = String($(id).value).trim().replace(/[\s ]/g, '').replace(',', '.');
-    if (t === '') { setErr(id, 'Заповни поле. Якщо витрат не було — постав 0'); return null; }
+    if (t === '') return 0;
     if (!/^\d{1,7}(\.\d{1,2})?$/.test(t)) { setErr(id, 'Сума в гривнях, напр. 1450 або 1450.50'); return null; }
     var n = parseFloat(t);
     if (n > 200000) { setErr(id, 'Забагато — перевір, чи не помилка'); return null; }
     return n;
   }
 
-  /* ─────────────────────────────── надсилання ─────────────────────────────── */
+  /* ───────────────────────── надсилання ───────────────────────── */
 
-  var sending = false;
-  var busyRetries = 0;
+  var sending = false, busyRetries = 0, lastPayload = null;
 
   function submit() {
     if (sending) return;
 
-    var v = {
-      zk: readCount('zk'),
-      buildings: readCount('buildings'),
-      a20: readCount('a20'),
-      a15: readCount('a15'),
-      transport: readMoney('transport'),
-      other: readMoney('other')
-    };
-    var bad = Object.keys(v).some(function (k) { return v[k] === null; });
+    var v = {}, bad = false;
+    state.fields.forEach(function (f) {
+      var n = readCount(f.key);
+      if (n === null) bad = true;
+      v[f.key] = n;
+    });
+    var t = readMoney('transport'); if (t === null) bad = true;
+    var o = readMoney('other');     if (o === null) bad = true;
 
     var comment = String($('comment').value).trim();
-    if (!bad && v.other > 0 && comment.length < 3) {
+    if (!bad && o > 0 && comment.length < 3) {
       setErr('comment', 'Напиши кілька слів, на що пішли ці гроші');
       bad = true;
     }
@@ -343,24 +409,26 @@
       return;
     }
 
+    v.transport = t; v.other = o; v.comment = comment;
+    lastPayload = v;
+    sendNow();
+  }
+
+  function sendNow() {
     sending = true;
     if (tg.MainButton) { tg.MainButton.showProgress(true); tg.MainButton.disable(); }
     else $('fallbackSubmit').disabled = true;
 
-    v.comment = comment;
-
-    api('submit', { payload: v }, function (res) {
+    api('submit', { payload: lastPayload }, function (res) {
       sending = false;
       if (tg.MainButton) { tg.MainButton.hideProgress(); tg.MainButton.enable(); }
       else $('fallbackSubmit').disabled = false;
 
       if (!res || !res.ok) {
-        // «Таблиця зайнята» — тимчасове. Пробуємо самі, двічі, мовчки:
-        // дані у формі на місці, смикати людину зайвий раз не треба.
         if (res && res.error === 'busy' && busyRetries < 2) {
           busyRetries++;
           if (tg.MainButton) tg.MainButton.showProgress(true);
-          setTimeout(submit, 2500);
+          setTimeout(sendNow, 2500);
           return;
         }
         busyRetries = 0;
@@ -368,14 +436,25 @@
         tg.showAlert((res && res.message) || 'Не вдалося зберегти. Спробуй ще раз.');
         return;
       }
+
       busyRetries = 0;
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       if (tg.MainButton) tg.MainButton.hide();
-      hide('form'); show('done');
-      $('doneText').textContent = res.updated
-        ? 'Звіт за ' + res.label + ' оновлено.'
-        : 'Звіт за ' + res.label + ' прийнято. Дякую!';
-      setTimeout(function () { tg.close(); }, 1800);
+      hide('form'); hide('totalBar'); show('done');
+
+      $('doneText').textContent = (res.updated ? 'Звіт за ' + res.label + ' оновлено.'
+                                              : 'Звіт за ' + res.label + ' прийнято. Дякую!');
+      var b = $('doneBreakdown');
+      b.textContent = '';
+      (res.breakdown || []).forEach(function (line) {
+        var d = document.createElement('div');
+        d.textContent = line;
+        b.appendChild(d);
+      });
+      var tot = document.createElement('div');
+      tot.style.cssText = 'margin-top:12px;font-size:19px;font-weight:700;color:var(--text)';
+      tot.textContent = 'До виплати: ' + money(res.total) + ' грн';
+      b.appendChild(tot);
     });
   }
 })();
