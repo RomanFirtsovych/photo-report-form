@@ -48,6 +48,20 @@
   }
   .notice.warn { color: var(--danger); }
   .divider { height: 1px; background: var(--section); margin: 22px 0 18px; }
+  .gate {
+    background: var(--section); border-radius: 12px;
+    padding: 14px; margin-bottom: 16px;
+  }
+  .gate .q { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .gate .h { color: var(--hint); font-size: 13px; margin-bottom: 10px; }
+  .toggle { display: flex; gap: 8px; }
+  .toggle button {
+    flex: 1; padding: 10px; font-size: 16px; font-weight: 600; font-family: inherit;
+    color: var(--text); background: var(--bg);
+    border: 2px solid transparent; border-radius: 9px; cursor: pointer;
+  }
+  .toggle button.on { border-color: var(--btn); color: var(--btn); }
+  .groupBody { margin: 0 0 8px; padding-left: 2px; }
   .divider-label {
     font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
     color: var(--hint); margin: 22px 0 12px;
@@ -116,8 +130,17 @@
     <div class="err" id="err_transport"></div>
   </div>
 
-  <div class="field">
-    <label>Якщо були інші витрати — вкажи суму, грн<div class="tip">Якщо не було — 0</div></label>
+  <div class="gate">
+    <div class="q">Чи були інші витрати?</div>
+    <div class="h">Усе, крім транспорту</div>
+    <div class="toggle" id="otherToggle">
+      <button type="button" id="otherNo">Ні</button>
+      <button type="button" id="otherYes">Так</button>
+    </div>
+  </div>
+
+  <div class="field hidden" id="otherField">
+    <label>Сума інших витрат, грн<div class="tip">Напр. 35</div></label>
     <input id="other" type="text" inputmode="decimal" placeholder="0">
     <div class="err" id="err_other"></div>
   </div>
@@ -153,7 +176,7 @@
   var API = 'https://script.google.com/macros/s/AKfycbxEknWI_qIV0jROjU8lL_6IiFdH6ejn_3Ae8PGbNY-HkE7fa2-GchtEKWmYpphss12q/exec';
 
   var tg = window.Telegram && window.Telegram.WebApp;
-  var state = { fields: [], roundUpTo: 0, noRate: false };
+  var state = { fields: [], groups: [], open: {}, gates: {}, otherOpen: false, roundUpTo: 0, noRate: false };
 
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id) { $(id).classList.remove('hidden'); };
@@ -171,6 +194,12 @@
   tg.ready();
   tg.expand();
 
+  function fail(msg) {
+    hide('loading'); hide('form'); hide('totalBar');
+    show('fatal');
+    $('fatalText').textContent = msg;
+  }
+
   function api(action, extra, cb) {
     var body = { __miniapp: 1, action: action, initData: tg.initData };
     for (var k in extra) if (extra.hasOwnProperty(k)) body[k] = extra[k];
@@ -182,10 +211,15 @@
       redirect: 'follow'
     })
       .then(function (r) { return r.json(); })
-      .then(cb)
-      .catch(function () {
-        hide('loading'); show('fatal');
-        $('fatalText').textContent = 'Немає звʼязку з сервером. Перевір інтернет і спробуй ще раз.';
+      .then(function (data) {
+        // Помилку в самому обробнику не можна плутати з мережевою:
+        // інакше баг у формі виглядає як «немає інтернету».
+        try { cb(data); }
+        catch (e) { fail('Помилка у формі: ' + (e && e.message ? e.message : e)); throw e; }
+      })
+      .catch(function (e) {
+        if (!$('fatal').classList.contains('hidden')) return;   // вже показали причину
+        fail('Немає звʼязку з сервером. Перевір інтернет і спробуй ще раз.');
       });
   }
 
@@ -257,60 +291,111 @@
     }
 
     var box = $('metrics');
-    state.fields.forEach(function (f) {
-      var wrap = document.createElement('div');
-      wrap.className = 'field';
-
-      var lab = document.createElement('label');
-      lab.appendChild(document.createTextNode(f.label));
-
-      var tip = document.createElement('div');
-      tip.className = 'tip';
-      tip.appendChild(document.createTextNode(f.hint));
-      if (f.per > 0) {
-        tip.appendChild(document.createTextNode(' · '));
-        var per = document.createElement('span');
-        per.className = 'per';
-        per.textContent = f.per + ' грн за кожен';
-        tip.appendChild(per);
-      }
-      lab.appendChild(tip);
-
-      var inp = document.createElement('input');
-      inp.id = f.key;
-      inp.type = 'text';
-      inp.inputMode = 'numeric';
-      inp.placeholder = '0';
-      inp.addEventListener('input', function () { clearErr(f.key); recalc(); });
-
-      var err = document.createElement('div');
-      err.className = 'err';
-      err.id = 'err_' + f.key;
-
-      wrap.appendChild(lab); wrap.appendChild(inp); wrap.appendChild(err);
-      box.appendChild(wrap);
-    });
+    state.groups = res.groups || [{ key: 'main', gate: null }];
 
     var r = res.report;
+
+    state.groups.forEach(function (g) {
+      var mine = state.fields.filter(function (f) { return f.group === g.key; });
+      if (!mine.length) return;
+
+      var body = document.createElement('div');
+      body.className = 'groupBody';
+      body.id = 'group_' + g.key;
+
+      mine.forEach(function (f) { body.appendChild(buildField(f)); });
+
+      if (!g.gate) { box.appendChild(body); return; }
+
+      // Група з питанням «чи було?» — деталі ховаємо, поки не «Так».
+      var gate = document.createElement('div');
+      gate.className = 'gate';
+
+      var q = document.createElement('div');
+      q.className = 'q';
+      q.textContent = g.gate;
+      gate.appendChild(q);
+
+      if (g.hint) {
+        var h = document.createElement('div');
+        h.className = 'h';
+        h.textContent = g.hint;
+        gate.appendChild(h);
+      }
+
+      var tg2 = document.createElement('div');
+      tg2.className = 'toggle';
+      var bNo = document.createElement('button');  bNo.type = 'button'; bNo.textContent = 'Ні';
+      var bYes = document.createElement('button'); bYes.type = 'button'; bYes.textContent = 'Так';
+      tg2.appendChild(bNo); tg2.appendChild(bYes);
+      gate.appendChild(tg2);
+
+      box.appendChild(gate);
+      box.appendChild(body);
+
+      var setOpen = function (open) {
+        state.open[g.key] = open;
+        bYes.classList.toggle('on', open);
+        bNo.classList.toggle('on', !open);
+        body.classList.toggle('hidden', !open);
+        if (!open) {
+          // Закрили — значить нічого не було. Чистимо, щоб не тягнути
+          // випадково введені числа у підсумок.
+          mine.forEach(function (f) { $(f.key).value = ''; clearErr(f.key); });
+        }
+        recalc();
+      };
+
+      bYes.onclick = function () { setOpen(true); };
+      bNo.onclick = function () { setOpen(false); };
+      setOpen(false);
+      state.gates[g.key] = setOpen;
+    });
+
     if (r) {
       $('editNotice').classList.remove('hidden');
       $('editNotice').textContent = 'Звіт за цей місяць уже є (оновлено ' + r.updated +
         '). Поля підставлені — зміни й надішли, старий буде перезаписаний.';
+      // Відкриваємо групи, в яких минулого разу були ненульові значення.
+      state.groups.forEach(function (g) {
+        if (!g.gate) return;
+        var any = state.fields.some(function (f) {
+          return f.group === g.key && Number(r[f.key]) > 0;
+        });
+        if (any && state.gates[g.key]) state.gates[g.key](true);
+      });
       state.fields.forEach(function (f) {
-        if (r[f.key] !== undefined && r[f.key] !== null && r[f.key] !== '') $(f.key).value = r[f.key];
+        var v = r[f.key];
+        if (v !== undefined && v !== null && v !== '' && Number(v) !== 0) $(f.key).value = v;
       });
       ['transport', 'other', 'comment'].forEach(function (k) {
-        if (r[k] !== undefined && r[k] !== null && r[k] !== '') $(k).value = r[k];
+        var v = r[k];
+        if (v !== undefined && v !== null && v !== '' && v !== 0) $(k).value = v;
       });
     }
 
     ['transport', 'other'].forEach(function (k) {
       $(k).addEventListener('input', function () { clearErr(k); recalc(); });
     });
-    $('other').addEventListener('input', toggleComment);
     $('comment').addEventListener('input', function () { clearErr('comment'); });
 
-    toggleComment();
+    var setOther = function (open) {
+      state.otherOpen = open;
+      $('otherYes').classList.toggle('on', open);
+      $('otherNo').classList.toggle('on', !open);
+      $('otherField').classList.toggle('hidden', !open);
+      $('commentField').classList.toggle('hidden', !open);
+      if (!open) {
+        $('other').value = ''; $('comment').value = '';
+        clearErr('other'); clearErr('comment');
+      }
+      recalc();
+    };
+    $('otherYes').onclick = function () { setOther(true); };
+    $('otherNo').onclick = function () { setOther(false); };
+    state.setOther = setOther;
+    setOther(Number(r && r.other) > 0);
+
     recalc();
 
     if (tg.MainButton) {
@@ -323,24 +408,68 @@
     }
   }
 
-  function toggleComment() {
-    var v = parseFloat(String($('other').value).replace(',', '.'));
-    if (v > 0) $('commentField').classList.remove('hidden');
-    else { $('commentField').classList.add('hidden'); clearErr('comment'); }
+  function buildField(f) {
+    var wrap = document.createElement('div');
+    wrap.className = 'field';
+
+    var lab = document.createElement('label');
+    lab.appendChild(document.createTextNode(f.label));
+
+    var tip = document.createElement('div');
+    tip.className = 'tip';
+    if (f.hint) tip.appendChild(document.createTextNode(f.hint));
+    if (f.per > 0) {
+      if (f.hint) tip.appendChild(document.createTextNode(' · '));
+      var per = document.createElement('span');
+      per.className = 'per';
+      per.textContent = f.per + ' грн за кожен';
+      tip.appendChild(per);
+    }
+    lab.appendChild(tip);
+
+    var inp = document.createElement('input');
+    inp.id = f.key;
+    inp.type = 'text';
+    inp.inputMode = 'numeric';
+    inp.placeholder = '0';
+    inp.addEventListener('input', function () { clearErr(f.key); recalc(); });
+
+    var err = document.createElement('div');
+    err.className = 'err';
+    err.id = 'err_' + f.key;
+
+    wrap.appendChild(lab); wrap.appendChild(inp); wrap.appendChild(err);
+    return wrap;
   }
 
   /* ───────────────────── живий підрахунок суми ───────────────────── */
 
+  /** Число з поля, без валідації: для живого підрахунку сміття = 0. */
   function num(id) {
-    var t = String($(id).value).trim().replace(/[\s ]/g, '').replace(',', '.');
+    var el = $(id);
+    if (!el) return 0;
+    var t = String(el.value).trim().replace(/[\s ]/g, '').replace(',', '.');
     var n = parseFloat(t);
     return isNaN(n) || n < 0 ? 0 : n;
   }
 
+  /** Поле рахується, лише якщо його група відкрита (або не має перемикача). */
+  function isFieldActive(f) {
+    for (var i = 0; i < state.groups.length; i++) {
+      if (state.groups[i].key === f.group) {
+        return !state.groups[i].gate || !!state.open[f.group];
+      }
+    }
+    return true;
+  }
+
   function recalc() {
     var sum = 0;
-    state.fields.forEach(function (f) { sum += num(f.key) * (f.per || 0); });
-    sum += num('transport') + num('other');
+    state.fields.forEach(function (f) {
+      if (!isFieldActive(f)) return;
+      sum += num(f.key) * (f.per || 0);
+    });
+    sum += num('transport') + (state.otherOpen ? num('other') : 0);
 
     var rounded = sum;
     if (state.roundUpTo > 0) rounded = Math.ceil(sum / state.roundUpTo) * state.roundUpTo;
@@ -390,14 +519,16 @@
 
     var v = {}, bad = false;
     state.fields.forEach(function (f) {
+      if (!isFieldActive(f)) { v[f.key] = 0; return; }   // група закрита = нуль
       var n = readCount(f.key);
       if (n === null) bad = true;
       v[f.key] = n;
     });
     var t = readMoney('transport'); if (t === null) bad = true;
-    var o = readMoney('other');     if (o === null) bad = true;
+    var o = state.otherOpen ? readMoney('other') : 0;
+    if (o === null) bad = true;
 
-    var comment = String($('comment').value).trim();
+    var comment = state.otherOpen ? String($('comment').value).trim() : '';
     if (!bad && o > 0 && comment.length < 3) {
       setErr('comment', 'Напиши кілька слів, на що пішли ці гроші');
       bad = true;
