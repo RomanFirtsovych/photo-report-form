@@ -154,6 +154,16 @@
     color: var(--brand); font-variant-numeric: tabular-nums;
   }
   .total .hintline { color: var(--hint); font-size: 12px; margin-top: 3px; }
+  .disclaimerBar {
+    color: var(--hint); font-size: 11.5px; line-height: 1.35;
+    margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--section);
+  }
+  .disclaimerBar:empty { display: none; }
+  .disclaimerBox {
+    background: var(--section); border-radius: 12px;
+    padding: 12px 14px; margin-top: 14px;
+    font-size: 13px; line-height: 1.45; color: var(--hint); text-align: left;
+  }
 
   /* ── вибір себе ── */
   .name-list button {
@@ -289,16 +299,18 @@
 
 <div id="totalBar" class="total hidden">
   <div class="row">
-    <span class="lbl">Разом до виплати</span>
+    <span class="lbl">Разом за розрахунком</span>
     <span class="big" id="totalValue">0 грн</span>
   </div>
   <div class="hintline" id="totalHint"></div>
+  <div class="disclaimerBar" id="disclaimerBar"></div>
 </div>
 
 <div id="done" class="center hidden">
   <div class="big-emoji">✅</div>
   <div id="doneText" class="doneTitle"></div>
   <div class="doneCard" id="doneBreakdown"></div>
+  <div class="disclaimerBox hidden" id="doneDisclaimer"></div>
 </div>
 
 <script>
@@ -309,7 +321,7 @@
   var API = 'https://script.google.com/macros/s/AKfycbxEknWI_qIV0jROjU8lL_6IiFdH6ejn_3Ae8PGbNY-HkE7fa2-GchtEKWmYpphss12q/exec';
 
   var tg = window.Telegram && window.Telegram.WebApp;
-  var state = { fields: [], groups: [], open: {}, gates: {}, otherOpen: false, bonusOpen: false, roundUpTo: 0, noRate: false };
+  var state = { fields: [], groups: [], open: {}, gates: {}, otherOpen: false, bonusOpen: false, roundUpTo: 0, noRate: false, disclaimer: '' };
 
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id) { $(id).classList.remove('hidden'); };
@@ -413,6 +425,8 @@
     show('totalBar');
     $('who').textContent = res.name;
     $('periodLine').textContent = 'Звіт за ' + res.period.label;
+    state.disclaimer = res.disclaimer || '';
+    if (res.disclaimerShort) $('disclaimerBar').textContent = '⚠️ ' + res.disclaimerShort;
     state.fields = res.fields || [];
     state.roundUpTo = res.roundUpTo || 0;
     state.noRate = !!res.noRate;
@@ -856,6 +870,12 @@
 
       $('doneText').textContent = (res.updated ? 'Звіт за ' + res.label + ' оновлено.'
                                               : 'Звіт за ' + res.label + ' прийнято. Дякую!');
+
+      var dtxt = res.disclaimer || state.disclaimer;
+      if (dtxt) {
+        $('doneDisclaimer').textContent = '⚠️ ' + dtxt;
+        $('doneDisclaimer').classList.remove('hidden');
+      }
       var b = $('doneBreakdown');
       b.textContent = '';
 
@@ -889,7 +909,7 @@
       tot.className = 'doneTotal';
       var cap = document.createElement('span');
       cap.className = 'cap';
-      cap.textContent = 'До виплати';
+      cap.textContent = 'Разом';
       var val = document.createElement('span');
       val.textContent = money(res.total) + ' грн';
       tot.appendChild(cap); tot.appendChild(val);
