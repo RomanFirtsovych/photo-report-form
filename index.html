@@ -2,315 +2,504 @@
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <title>Звіт фотографа</title>
+
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Roboto+Mono:wght@600&family=Unbounded:wght@900&display=swap">
+
 <style>
-  :root {
-    --bg: var(--tg-theme-bg-color, #ffffff);
-    --text: var(--tg-theme-text-color, #16191d);
-    --hint: var(--tg-theme-hint-color, #8b8f96);
-    --section: var(--tg-theme-secondary-bg-color, #f2f3f5);
-    --btn: var(--tg-theme-button-color, #14b8a6);
-    --btn-text: var(--tg-theme-button-text-color, #ffffff);
+/* ==========================================================================
+   Звіт фотографа — та сама мова, що й дашборд LUN Ops («Deck», v24).
 
-    /* Фірмовий акцент — той самий мʼятний, що на аватарці бота. */
-    --brand: #14b8a6;
-    --brand-soft: rgba(20, 184, 166, .12);
-    --danger: #e5484d;
-    --danger-soft: rgba(229, 72, 77, .12);
-    --radius: 14px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --brand: #2dd4bf; --brand-soft: rgba(45, 212, 191, .16); }
-  }
+   Правила, які тут дотримані:
+     1. Ієрархію тримає РОЗМІР, а не заливки. Головний обʼєкт екрана —
+        підсумкова сума, набрана дисплейною гарнітурою у вазі 900.
+     2. Біле · чорне · помаранчеве. Сірий нейтральний, другого акценту немає.
+     3. Помаранчевий = «ось це»: фокус у полі, увімкнений перемикач і рівно
+        одна дія — кнопка «Надіслати». Більше ніде.
+     4. Жирний текст. Легких ваг у системі не існує, базова — 600.
+     5. Капс із трекінгом .2em — рубрика над кожним блоком.
+     6. Без карток і без радіусів. Розділяють волосяні лінійки й повітря.
+        Коло лишається тільки там, де воно є в бренді (чіпи).
 
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+   Градієнт презентації (peach → lilac → periwinkle) — єдиний виняток із
+   правила трьох кольорів, і він, як у деку, відкриває й закриває розповідь:
+   екран «Хто ти?» і екран «Звіт прийнято». Дані живуть на білому.
+   ========================================================================== */
 
-  body {
-    margin: 0; padding: 18px 16px 132px;
-    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg); color: var(--text);
-    -webkit-font-smoothing: antialiased;
-  }
+:root {
+  color-scheme: light;
 
-  h1 { font-size: 22px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -.02em; }
-  .sub { color: var(--hint); font-size: 14px; margin-bottom: 18px; }
+  --bg:        #ffffff;
+  --surface-2: #f2f2f2;
+  --surface-3: #e6e6e6;
+  --line:      #e4e4e4;
+  --line-2:    #c4c4c4;
 
-  .periodChip {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--brand-soft); color: var(--brand);
-    border-radius: 999px; padding: 6px 14px;
-    font-size: 14px; font-weight: 600; margin-bottom: 20px;
-  }
+  --text:      #000000;
+  --text-2:    #6b6b6b;
+  --text-3:    #767676;
 
-  .notice {
-    border-radius: var(--radius); padding: 12px 14px;
-    font-size: 14px; line-height: 1.4; margin-bottom: 16px;
-    background: var(--section); color: var(--hint);
-  }
-  .notice.warn { background: var(--danger-soft); color: var(--danger); }
+  --accent:     #ff6a00;
+  --accent-ink: #000000;   /* чорний на помаранчевому: 7.31:1, білий дав би 2.87:1 */
 
-  /* ── поле ── */
-  .field { margin-bottom: 18px; }
-  .field label { display: block; font-size: 15.5px; font-weight: 600; margin-bottom: 7px; }
-  .tip { color: var(--hint); font-size: 13px; font-weight: 400; margin-top: 3px; line-height: 1.35; }
-  .per { color: var(--brand); font-weight: 600; white-space: nowrap; }
+  --bad:   #c31f34;
+  --bad-8: rgba(195, 31, 52, .09);
+  --warn:  #8a6000;
 
-  .inputWrap { position: relative; }
-  input, textarea {
-    width: 100%; padding: 13px 15px; font-size: 17px; font-family: inherit;
-    color: var(--text); background: var(--section);
-    border: 1.5px solid transparent; border-radius: 12px; outline: none;
-    transition: border-color .15s, background .15s;
-  }
-  input:focus, textarea:focus { border-color: var(--brand); background: var(--bg); }
-  input.bad, textarea.bad { border-color: var(--danger); }
-  textarea { min-height: 80px; resize: vertical; }
+  --grad-brand: linear-gradient(103deg, #f9d9b8 0%, #e3d3f5 48%, #c9cef2 100%);
+  --grad-ink:   rgba(0, 0, 0, .66);
+  --grad-line:  rgba(0, 0, 0, .16);
 
-  .lineSum {
-    font-size: 13px; font-weight: 600; color: var(--brand);
-    margin-top: 6px; min-height: 17px;
-  }
-  .err { color: var(--danger); font-size: 13px; margin-top: 6px; display: none; }
-  .err.on { display: block; }
+  --display: "Unbounded", system-ui, sans-serif;
+  --sans:    "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:    "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* ── група з перемикачем ── */
-  .gate {
-    background: var(--section); border-radius: var(--radius);
-    padding: 14px 15px; margin-bottom: 14px;
-  }
-  .gate.open { background: var(--brand-soft); }
-  .gate .q { font-size: 15.5px; font-weight: 600; line-height: 1.3; }
-  .gate .h { color: var(--hint); font-size: 13px; margin-top: 3px; }
-  .toggle {
-    display: flex; gap: 6px; margin-top: 12px;
-    background: var(--bg); border-radius: 11px; padding: 4px;
-  }
-  .toggle button {
-    flex: 1; padding: 9px; font-size: 15.5px; font-weight: 600; font-family: inherit;
-    color: var(--hint); background: transparent;
-    border: none; border-radius: 8px; cursor: pointer;
-    transition: background .15s, color .15s;
-  }
-  .toggle button.on { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.10); }
-  .toggle button.yes.on { background: var(--brand); color: #fff; box-shadow: none; }
+  --t: 120ms cubic-bezier(.2, 0, .2, 1);
 
-  .groupBody { margin-bottom: 2px; }
-  .groupBody.gated {
-    padding: 6px 0 2px 14px; margin-bottom: 12px;
-    border-left: 2px solid var(--brand-soft);
-    animation: slide .18s ease-out;
-  }
-  @keyframes slide {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: none; }
-  }
+  --gutter: 20px;
+  --ctl-h:  52px;
+}
 
-  .priceList {
-    background: var(--section); border-radius: 12px;
-    padding: 11px 13px; margin-bottom: 14px; font-size: 13px; color: var(--hint);
-  }
-  .priceList .head { font-weight: 700; color: var(--text); margin-bottom: 6px; font-size: 13px; }
-  .priceList .row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
-  .priceList .row b { color: var(--brand); white-space: nowrap; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
 
-  .bonusRow {
-    background: var(--section); border-radius: 12px;
-    padding: 10px; margin-bottom: 10px;
-  }
-  .bonusRow .top { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .bonusRow .amt { flex: 1 1 auto; background: var(--bg); }
-  .bonusRow .why { background: var(--bg); }
-  .bonusRow .del {
-    flex: 0 0 auto; width: 46px; height: 49px; font-size: 22px; line-height: 1;
-    background: transparent; color: var(--hint);
-    border: none; border-radius: 12px; cursor: pointer; font-family: inherit;
-  }
-  .bonusRow .del:active { background: var(--danger-soft); color: var(--danger); }
-  .addRow {
-    width: 100%; padding: 12px; font-size: 15px; font-weight: 600; font-family: inherit;
-    color: var(--brand); background: var(--brand-soft);
-    border: none; border-radius: 12px; cursor: pointer; margin-bottom: 6px;
-  }
+  --bg:        #000000;
+  --surface-2: #141414;
+  --surface-3: #1f1f1f;
+  --line:      #232323;
+  --line-2:    #3a3a3a;
 
-  .sectionLabel {
-    font-size: 12.5px; text-transform: uppercase; letter-spacing: .07em;
-    color: var(--hint); font-weight: 700; margin: 26px 0 12px;
-  }
+  --text:      #ffffff;
+  --text-2:    #a0a0a0;
+  --text-3:    #757575;
 
-  /* ── підсумок ── */
-  .total {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
-    background: var(--bg);
-    border-top: 1px solid var(--section);
-    padding: 13px 16px calc(13px + env(safe-area-inset-bottom));
-    box-shadow: 0 -6px 20px rgba(0,0,0,.05);
-  }
-  .total .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-  .total .lbl { font-size: 14px; color: var(--hint); }
-  .total .big {
-    font-size: 26px; font-weight: 800; letter-spacing: -.02em;
-    color: var(--brand); font-variant-numeric: tabular-nums;
-  }
-  .total .hintline { color: var(--hint); font-size: 12px; margin-top: 3px; }
-  .disclaimerBar {
-    color: var(--hint); font-size: 11.5px; line-height: 1.35;
-    margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--section);
-  }
-  .disclaimerBar:empty { display: none; }
-  .disclaimerBox {
-    background: var(--section); border-radius: 12px;
-    padding: 12px 14px; margin-top: 14px;
-    font-size: 13px; line-height: 1.45; color: var(--hint); text-align: left;
-  }
+  --accent:     #ff6a00;
+  --accent-ink: #000000;
 
-  /* ── вибір себе ── */
-  .name-list button {
-    display: block; width: 100%; text-align: left; margin-bottom: 8px;
-    padding: 15px; font-size: 17px; font-family: inherit;
-    color: var(--text); background: var(--section);
-    border: 1.5px solid transparent; border-radius: 12px; cursor: pointer;
-    transition: border-color .12s, background .12s;
-  }
-  .name-list button:active { border-color: var(--brand); background: var(--brand-soft); }
-  #pickSearch { margin-bottom: 14px; }
+  --bad:   #ff6b7d;
+  --bad-8: rgba(255, 107, 125, .13);
+  --warn:  #e0ae3a;
 
-  /* ── екрани ── */
-  .center { text-align: center; padding: 64px 20px; color: var(--hint); }
-  .big-emoji { font-size: 46px; margin-bottom: 14px; }
-  .spinner {
-    width: 34px; height: 34px; margin: 0 auto 16px;
-    border: 3px solid var(--section); border-top-color: var(--brand);
-    border-radius: 50%; animation: spin .8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  --grad-brand: linear-gradient(103deg, #221a12 0%, #1e1a28 48%, #171a28 100%);
+  --grad-ink:   rgba(255, 255, 255, .62);
+  --grad-line:  rgba(255, 255, 255, .16);
+}
 
-  .doneTitle { font-size: 17px; font-weight: 600; color: var(--text); }
-  .doneCard {
-    background: var(--section); border-radius: var(--radius);
-    padding: 16px; margin-top: 18px; text-align: left;
-  }
-  .doneCard .line {
-    display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
-    padding: 7px 0;
-  }
-  .lineLeft { min-width: 0; }
-  .lineLabel { font-size: 14.5px; color: var(--text); line-height: 1.3; }
-  .lineDetail { font-size: 12.5px; color: var(--hint); margin-top: 1px; }
-  .lineAmount {
-    font-size: 14.5px; font-weight: 600; color: var(--text);
-    white-space: nowrap; font-variant-numeric: tabular-nums;
-  }
-  .doneTotal {
-    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--bg);
-    display: flex; justify-content: space-between; align-items: baseline;
-    font-weight: 800; font-size: 20px; color: var(--brand);
-  }
-  .doneTotal .cap { font-size: 14px; font-weight: 600; color: var(--text); }
+/* ── БАЗА ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box; margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+html { -webkit-text-size-adjust: 100% }
 
-  .fallback {
-    width: 100%; padding: 16px; margin-top: 10px; font-size: 17px; font-weight: 700;
-    font-family: inherit; color: var(--btn-text); background: var(--brand);
-    border: none; border-radius: 12px; cursor: pointer;
+body {
+  min-height: 100dvh;
+  padding: 22px var(--gutter) 190px;
+  background: var(--bg);
+  color: var(--text);
+  font: 600 14px/1.5 var(--sans);
+  letter-spacing: -.005em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background var(--t);
+}
+
+button, input, textarea { font: inherit; color: inherit }
+button { background: none; border: 0; cursor: pointer }
+svg { display: block; flex: none }
+::selection { background: var(--accent); color: var(--accent-ink) }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+:focus:not(:focus-visible) { outline: none }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
   }
-  .fallback:disabled { opacity: .6; }
-  .hidden { display: none !important; }
+}
+
+.hidden { display: none !important }
+
+/* ── ТИПОГРАФІКА ───────────────────────────────────────────────────────── */
+/* Дисплейна гарнітура, вага 900, щільний трекінг — так подані всі числа
+   презентації. word-spacing компенсує мінусовий трекінг на розділювачі
+   тисяч, інакше «1 240» злипається. */
+.figure {
+  font-family: var(--display); font-weight: 900;
+  letter-spacing: -.05em; line-height: .92; word-spacing: .22em;
+  font-variant-numeric: proportional-nums;
+}
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em }
+
+.eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--text-3);
+}
+
+.h1 {
+  font-family: var(--display); font-weight: 900;
+  font-size: clamp(30px, 8.6vw, 40px);
+  letter-spacing: -.045em; line-height: 1; margin-top: 11px;
+}
+.sub { font-size: 14px; font-weight: 600; color: var(--text-2); line-height: 1.45; margin-top: 12px }
+
+/* ── РОЗДІЛ ────────────────────────────────────────────────────────────── */
+/* Картки не існують. Рубрика, заголовок, під ними волосяна лінійка. */
+.sec { margin-top: 40px }
+.sec-h {
+  font-family: var(--display); font-size: 19px; font-weight: 900;
+  letter-spacing: -.035em; line-height: 1.05;
+  margin-top: 9px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--text);
+}
+.sec-sub { font-size: 13px; font-weight: 600; color: var(--text-2); line-height: 1.45; margin-top: 13px }
+
+/* ── ПОВІДОМЛЕННЯ ──────────────────────────────────────────────────────── */
+/* Плашка без заливки: ліва лінійка й повітря, як розділювачі в деку. */
+.notice {
+  border-left: 3px solid var(--text-3);
+  padding: 2px 0 2px 13px; margin-top: 20px;
+  font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--text-2);
+}
+.notice.warn { border-left-color: var(--warn); color: var(--text) }
+
+/* ── ПОКАЗНИК ──────────────────────────────────────────────────────────── */
+.metric { padding: 20px 0; border-bottom: 1px solid var(--line) }
+.metric:last-child { border-bottom: 0 }
+
+.m-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px }
+.m-label { font-size: 15px; font-weight: 700; line-height: 1.3 }
+/* Тариф моноширинним і дрібним: це довідка, а не частина повідомлення. */
+.m-rate {
+  flex: none; font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: var(--text-3); white-space: nowrap; padding-top: 3px;
+}
+.m-hint { font-size: 12px; font-weight: 600; color: var(--text-3); line-height: 1.35; margin-top: 5px }
+
+.m-row { display: flex; align-items: baseline; gap: 14px; margin-top: 14px }
+
+/* Поле без коробки — самої лінійки досить, бо число в ній 30px і вагою 900.
+   Коробка навколо такого числа була б рамкою заради рамки. */
+.inp-fig {
+  width: 118px; flex: none;
+  font-family: var(--display); font-weight: 900; font-size: 30px;
+  letter-spacing: -.045em;
+  padding: 0 2px 7px; background: none;
+  border: 0; border-bottom: 2px solid var(--line-2);
+  transition: border-color var(--t);
+}
+.inp-fig::placeholder { color: var(--text-3); opacity: .35 }
+.inp-fig:focus { outline: none; border-bottom-color: var(--accent) }
+.inp-fig.bad { border-bottom-color: var(--bad) }
+.inp-fig.sm { width: 104px; font-size: 24px }
+
+.m-sum {
+  flex: 1; min-width: 0; text-align: right;
+  font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-2);
+}
+.cur { font-size: 12px; font-weight: 700; color: var(--text-3); flex: none }
+
+.err { color: var(--bad); font-size: 12.5px; font-weight: 700; margin-top: 8px; display: none }
+.err.on { display: block }
+.warnline { color: var(--warn); font-size: 12.5px; font-weight: 700; margin-top: 10px; display: none }
+.warnline.on { display: block }
+
+/* ── ПЕРЕМИКАЧ ─────────────────────────────────────────────────────────── */
+/* Квадратний прапорець, а не тумблер: заокругленої доріжки в бренді немає,
+   а прямий кут є всюди. Тапається весь рядок. */
+.cbrow {
+  display: flex; align-items: flex-start; gap: 14px;
+  width: 100%; text-align: left;
+  padding: 18px 0; border-bottom: 1px solid var(--line);
+}
+.cbox {
+  flex: none; width: 26px; height: 26px; margin-top: 1px;
+  display: grid; place-items: center;
+  border: 1.5px solid var(--line-2);
+  transition: background var(--t), border-color var(--t);
+}
+.cbox svg { opacity: 0; transition: opacity var(--t) }
+.cbrow[aria-checked="true"] .cbox { background: var(--accent); border-color: var(--accent) }
+.cbrow[aria-checked="true"] .cbox svg { opacity: 1 }
+.cb-txt { min-width: 0 }
+.cb-q { display: block; font-size: 15px; font-weight: 700; line-height: 1.3 }
+.cb-h { display: block; font-size: 12px; font-weight: 600; color: var(--text-3); line-height: 1.35; margin-top: 4px }
+
+/* Вкладений блок: зсув і вертикальна лінійка показують підпорядкування. */
+.nested {
+  padding-left: 16px; margin: 4px 0 0;
+  border-left: 1px solid var(--line-2);
+  animation: slide .16s cubic-bezier(.2, 0, .2, 1);
+}
+@keyframes slide { from { opacity: 0; transform: translateY(-5px) } to { opacity: 1; transform: none } }
+
+/* ── ПРАЙС БОНУСІВ ─────────────────────────────────────────────────────── */
+/* Раніше це були дві окремі речі: довідник «скільки за що нараховують» і
+   поле, куди суму переписували руками. Тепер це один список: тариф стоїть
+   у рядку, і цей самий рядок додає бонус. Ряд із волосяною лінійкою й
+   моноширинним числом праворуч — та сама фігура, що й у дашборді. */
+.picks { margin-top: 8px }
+.pick-row {
+  display: flex; align-items: center; gap: 13px;
+  width: 100%; text-align: left;
+  padding: 14px 0; border-bottom: 1px solid var(--line);
+}
+.pick-plus {
+  flex: none; width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border: 1.5px solid var(--line-2);
+  font-size: 15px; font-weight: 700; line-height: 1; color: var(--text-3);
+  transition: background var(--t), border-color var(--t), color var(--t);
+}
+.pick-row:active .pick-plus { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+.pick-l { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; line-height: 1.3 }
+.pick-a { flex: none; font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text-3) }
+
+.brow { padding: 18px 0; border-bottom: 1px solid var(--line) }
+.brow-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
+.brow-why { font-size: 14.5px; font-weight: 800; line-height: 1.3 }
+.brow-del {
+  flex: none; width: 34px; height: 34px; margin: -6px -8px 0 0;
+  display: grid; place-items: center;
+  font-size: 24px; line-height: 1; color: var(--text-3);
+}
+.brow-del:active { color: var(--bad) }
+.brow-amt { display: flex; align-items: baseline; gap: 8px; margin-top: 12px }
+
+/* ── ТЕКСТОВЕ ПОЛЕ ─────────────────────────────────────────────────────── */
+/* Рівно 16px, не менше: нижче цього iOS наїжджає на поле при фокусі, і
+   саме заради цього колись стояв user-scalable=no. Дешевше підняти шрифт,
+   ніж відбирати в людини зум. */
+.inp-text {
+  width: 100%; height: var(--ctl-h); padding: 0 14px;
+  background: none; border: 1px solid var(--line-2);
+  font-size: 16px; font-weight: 600;
+  transition: border-color var(--t);
+}
+.inp-text::placeholder { color: var(--text-3); font-weight: 600 }
+.inp-text:focus { outline: none; border-color: var(--accent) }
+.inp-text.bad { border-color: var(--bad) }
+textarea.inp-text { height: auto; min-height: 84px; padding: 14px; resize: vertical; line-height: 1.4 }
+.f-label { font-size: 15px; font-weight: 700; line-height: 1.3; margin-bottom: 4px }
+.f-hint { font-size: 12px; font-weight: 600; color: var(--text-3); line-height: 1.35; margin-bottom: 10px }
+.f-block { padding: 20px 0; border-bottom: 1px solid var(--line) }
+.f-block:last-child { border-bottom: 0 }
+
+/* ── ПІДСУМОК ──────────────────────────────────────────────────────────── */
+/* Найбільший обʼєкт екрана. Чорний, не помаранчевий: ієрархію тут тримає
+   розмір, а помаранчевий витрачається на єдину дію — кнопку «Надіслати». */
+.totalbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  background: var(--bg); border-top: 1px solid var(--text);
+  padding: 15px var(--gutter) calc(15px + env(safe-area-inset-bottom));
+}
+.tb-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px }
+.tb-lbl {
+  flex: 1; min-width: 0; padding-bottom: 7px;
+  font-size: 11px; font-weight: 700; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--text-3); line-height: 1.3;
+}
+.tb-fig { display: flex; align-items: baseline; gap: 5px; flex: none }
+.tb-fig .figure { font-size: clamp(34px, 10.5vw, 46px) }
+.tb-cur { font-family: var(--sans); font-size: 15px; font-weight: 800; letter-spacing: -.01em }
+.tb-hint { font-size: 11.5px; font-weight: 600; color: var(--text-3); line-height: 1.35; margin-top: 8px }
+.tb-hint:empty { display: none }
+
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; height: var(--ctl-h);
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  font-size: 14px; font-weight: 800; letter-spacing: .01em;
+  transition: opacity var(--t), transform var(--t);
+}
+.btn:active:not(:disabled) { transform: scale(.99) }
+.btn:disabled { opacity: .4 }
+.btn.ghost { background: none; color: var(--text); border-color: var(--text) }
+
+/* ── ЕКРАНИ НА ГРАДІЄНТІ ───────────────────────────────────────────────── */
+/* Титульний градієнт деку відкриває й закриває розповідь. На тонованому тлі
+   жоден токен тексту не тримає контраст, тому екран тягне власні перекриття —
+   рівно та ціна, через яку виняток один, а не «градієнти дозволені». */
+body.on-grad { background: var(--grad-brand) }
+body.on-grad .eyebrow,
+body.on-grad .sub,
+body.on-grad .d-detail,
+body.on-grad .d-note { color: var(--grad-ink) }
+body.on-grad .inp-text { border-color: var(--grad-line) }
+body.on-grad .d-line { border-bottom-color: var(--grad-line) }
+body.on-grad .d-total { border-top-color: currentColor }
+
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 30px }
+.brand-mark { display: grid; place-items: center; width: 24px; height: 24px; background: var(--text); color: var(--bg) }
+.brand-name { font-family: var(--display); font-size: 15px; font-weight: 900; letter-spacing: -.04em; text-transform: lowercase }
+
+/* ── ВИБІР СЕБЕ ────────────────────────────────────────────────────────── */
+.names { margin-top: 20px }
+.name-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  width: 100%; text-align: left; padding: 17px 0;
+  border-bottom: 1px solid var(--grad-line);
+  font-size: 16px; font-weight: 700; line-height: 1.3;
+}
+.name-btn:active { color: var(--accent) }
+.name-btn svg { color: var(--grad-ink) }
+
+/* ── ЕКРАН «ПРИЙНЯТО» ──────────────────────────────────────────────────── */
+.d-fig { display: flex; align-items: baseline; gap: 6px; margin-top: 24px }
+.d-fig .figure { font-size: clamp(52px, 16vw, 76px) }
+.d-fig .tb-cur { font-size: 19px }
+
+.d-line { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--grad-line) }
+.d-l { min-width: 0 }
+.d-label { font-size: 14px; font-weight: 700; line-height: 1.3 }
+.d-detail { font-size: 12px; font-weight: 600; margin-top: 2px; line-height: 1.3 }
+.d-amount { flex: none; font-family: var(--mono); font-size: 13.5px; font-weight: 600 }
+.d-total { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-top: 14px; padding-top: 14px; border-top: 1.5px solid currentColor; font-size: 16px; font-weight: 800 }
+.d-total .num { font-size: 16px; font-weight: 700 }
+.d-note { font-size: 12.5px; font-weight: 600; line-height: 1.45; margin-top: 24px }
+
+/* ── СЛУЖБОВІ ──────────────────────────────────────────────────────────── */
+.center { padding: 88px 0; text-align: center; color: var(--text-2) }
+.spinner {
+  width: 30px; height: 30px; margin: 0 auto 18px;
+  border: 2px solid var(--line); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+.fatal-h { font-family: var(--display); font-size: 20px; font-weight: 900; letter-spacing: -.035em; color: var(--text); margin-bottom: 12px }
 </style>
 </head>
+
 <body>
 
 <div id="loading" class="center"><div class="spinner"></div>Завантаження…</div>
 
 <div id="fatal" class="center hidden">
-  <div class="big-emoji">⚠️</div>
-  <div id="fatalText"></div>
+  <div class="fatal-h">Не вийшло</div>
+  <div id="fatalText" class="sub" style="margin-top:0"></div>
 </div>
 
+<!-- ─────────────────────────── ХТО ТИ ─────────────────────────── -->
 <div id="pick" class="hidden">
-  <h1>Хто ти?</h1>
-  <div class="sub">Обери своє імʼя один раз — далі бот тебе впізнаватиме сам.</div>
-  <input id="pickSearch" type="text" placeholder="Почни вводити прізвище…" autocomplete="off">
-  <div id="pickList" class="name-list"></div>
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="3" y="14" width="4" height="7"/><rect x="10" y="8" width="4" height="13" opacity=".8"/><rect x="17" y="3" width="4" height="18" opacity=".6"/>
+      </svg>
+    </span>
+    <span class="brand-name">lun</span>
+  </div>
+
+  <p class="eyebrow">Звіт фотографа</p>
+  <h1 class="h1">Хто ти?</h1>
+  <p class="sub">Обери своє імʼя один раз — далі я впізнаватиму тебе сам.</p>
+
+  <div style="margin-top:24px">
+    <input id="pickSearch" class="inp-text" type="text" placeholder="Почни вводити прізвище…" autocomplete="off">
+  </div>
+  <div id="pickList" class="names"></div>
   <div id="pickEmpty" class="notice hidden">
     Твого імені немає у списку вільних. Можливо, ти вже обрав себе раніше
     з іншого акаунта. Звернись до керівника.
   </div>
 </div>
 
+<!-- ─────────────────────────── ФОРМА ─────────────────────────── -->
 <div id="form" class="hidden">
-  <h1>Місячний звіт</h1>
-  <div class="sub" id="who"></div>
-  <div class="periodChip" id="periodLine"></div>
+  <p class="eyebrow" id="periodLine"></p>
+  <h1 class="h1">Місячний звіт</h1>
+  <p class="sub" id="who"></p>
+
   <div id="editNotice" class="notice hidden"></div>
   <div id="rateNotice" class="notice warn hidden"></div>
 
-  <div id="metrics"></div>
+  <section class="sec">
+    <p class="eyebrow">01 — Зйомка</p>
+    <h2 class="sec-h">Що зроблено за місяць</h2>
+    <div id="metrics"></div>
+  </section>
 
-  <div class="sectionLabel">Бонуси</div>
-
-  <div class="gate" id="bonusGate">
-    <div class="q">Чи є за що нарахувати бонус?</div>
-    <div class="h">Знайдені обʼєкти, термінові чи повторні виїзди, правки — будь-що</div>
-    <div class="toggle">
-      <button type="button" class="no" id="bonusNo">Ні</button>
-      <button type="button" class="yes" id="bonusYes">Так</button>
-    </div>
-  </div>
-
-  <div id="bonusBody" class="groupBody gated hidden">
-    <div class="priceList" id="priceList"></div>
+  <section class="sec">
+    <p class="eyebrow">02 — Бонуси</p>
+    <h2 class="sec-h">Є за що доплатити?</h2>
+    <p class="sec-sub">Тапни рядок — сума підставиться сама, лишиться дописати обʼєкт.</p>
+    <div id="bonusPicks" class="picks"></div>
     <div id="bonusRows"></div>
-    <button type="button" class="addRow" id="addBonus">+ Додати ще бонус</button>
     <div class="err" id="err_bonus"></div>
-  </div>
+  </section>
 
-  <div class="sectionLabel">Витрати</div>
+  <section class="sec">
+    <p class="eyebrow">03 — Витрати</p>
+    <h2 class="sec-h">Що витрачено</h2>
 
-  <div class="field">
-    <label>Витрати на транспорт, грн<div class="tip">Напр. 1450 або 1450.50</div></label>
-    <input id="transport" type="text" inputmode="decimal" placeholder="0">
-    <div class="err" id="err_transport"></div>
-  </div>
+    <div class="f-block">
+      <div class="m-top"><div class="m-label">Транспорт</div></div>
+      <div class="m-hint">Напр. 1450 або 1450.50</div>
+      <div class="m-row">
+        <input id="transport" class="inp-fig sm" type="text" inputmode="decimal" placeholder="0">
+        <span class="cur">грн</span>
+      </div>
+      <div class="err" id="err_transport"></div>
+    </div>
 
-  <div class="gate">
-    <div class="q">Чи були інші витрати?</div>
-    <div class="h">Усе, крім транспорту</div>
-    <div class="toggle" id="otherToggle">
-      <button type="button" class="no" id="otherNo">Ні</button>
-      <button type="button" class="yes" id="otherYes">Так</button>
+    <div class="cbrow" id="otherGate" role="checkbox" aria-checked="false" tabindex="0">
+      <span class="cbox" aria-hidden="true">
+        <svg width="15" height="12" viewBox="0 0 15 12" fill="none"><path d="M1.5 6.2L5.3 10 13.5 1.8" stroke="#000" stroke-width="2.4" stroke-linecap="square"/></svg>
+      </span>
+      <span class="cb-txt">
+        <span class="cb-q">Були інші витрати</span>
+        <span class="cb-h">Усе, крім транспорту</span>
+      </span>
+    </div>
+
+    <div id="otherBody" class="nested hidden">
+      <div class="f-block">
+        <div class="f-label">Сума інших витрат</div>
+        <div class="m-row" style="margin-top:10px">
+          <input id="other" class="inp-fig sm" type="text" inputmode="decimal" placeholder="0">
+          <span class="cur">грн</span>
+        </div>
+        <div class="err" id="err_other"></div>
+      </div>
+      <div class="f-block">
+        <div class="f-label">На що</div>
+        <div class="f-hint">Коротко, кілька слів</div>
+        <textarea id="comment" class="inp-text" placeholder="Напр. корм"></textarea>
+        <div class="err" id="err_comment"></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="notice hidden" id="formDisclaimer"></p>
+</div>
+
+<div id="totalBar" class="totalbar hidden">
+  <div class="tb-row">
+    <div class="tb-lbl">Разом<br>за розрахунком</div>
+    <div class="tb-fig">
+      <span class="figure" id="totalValue">0</span><span class="tb-cur">грн</span>
     </div>
   </div>
-
-  <div class="field hidden" id="otherField">
-    <label>Сума інших витрат, грн<div class="tip">Напр. 35</div></label>
-    <input id="other" type="text" inputmode="decimal" placeholder="0">
-    <div class="err" id="err_other"></div>
-  </div>
-
-  <div class="field hidden" id="commentField">
-    <label>На що були інші витрати<div class="tip">Коротко, кілька слів</div></label>
-    <textarea id="comment" placeholder="Напр. корм"></textarea>
-    <div class="err" id="err_comment"></div>
-  </div>
-
-  <button id="fallbackSubmit" class="fallback hidden">Надіслати звіт</button>
+  <div class="tb-hint" id="totalHint"></div>
+  <button id="fallbackSubmit" class="btn hidden" style="margin-top:13px">Надіслати звіт</button>
 </div>
 
-<div id="totalBar" class="total hidden">
-  <div class="row">
-    <span class="lbl">Разом за розрахунком</span>
-    <span class="big" id="totalValue">0 грн</span>
+<!-- ─────────────────────────── ПРИЙНЯТО ─────────────────────────── -->
+<div id="done" class="hidden">
+  <p class="eyebrow" id="doneKind">Звіт прийнято</p>
+  <h1 class="h1" id="donePeriod"></h1>
+  <div class="d-fig">
+    <span class="figure" id="doneTotal">0</span><span class="tb-cur">грн</span>
   </div>
-  <div class="hintline" id="totalHint"></div>
-  <div class="disclaimerBar" id="disclaimerBar"></div>
-</div>
-
-<div id="done" class="center hidden">
-  <div class="big-emoji">✅</div>
-  <div id="doneText" class="doneTitle"></div>
-  <div class="doneCard" id="doneBreakdown"></div>
-  <div class="disclaimerBox hidden" id="doneDisclaimer"></div>
+  <p class="sub" id="doneText"></p>
+  <div id="doneBreakdown" style="margin-top:26px"></div>
+  <p class="d-note hidden" id="doneDisclaimer"></p>
 </div>
 
 <script>
@@ -318,29 +507,83 @@
   'use strict';
 
   // ⚠️ Встав сюди URL веб-апки Apps Script (закінчується на /exec)
-  var API = 'https://script.google.com/macros/s/AKfycbxEknWI_qIV0jROjU8lL_6IiFdH6ejn_3Ae8PGbNY-HkE7fa2-GchtEKWmYpphss12q/exec';
+  var API = 'PASTE_APPS_SCRIPT_EXEC_URL_HERE';
 
   var tg = window.Telegram && window.Telegram.WebApp;
-  var state = { fields: [], groups: [], open: {}, gates: {}, otherOpen: false, bonusOpen: false, roundUpTo: 0, noRate: false, disclaimer: '' };
+
+  var state = {
+    fields: [], groups: [], open: {}, gates: {},
+    bonuses: [], hints: [],
+    otherOpen: false, roundUpTo: 0, noRate: false, disclaimer: '',
+    // Межі приходять із Config.gs. Тут лише запасні значення на випадок
+    // старого бекенду — інакше форма обіцяла б те, чого сервер не приймає.
+    limits: { maxCount: 2000, maxMoney: 200000 }
+  };
 
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id) { $(id).classList.remove('hidden'); };
   var hide = function (id) { $(id).classList.add('hidden'); };
-  var money = function (v) {
+
+  /** 1240.5 → «1 240,5». Розділювач тисяч потрібен: у підсумку буває 5 цифр. */
+  function money(v) {
     var n = Math.round((Number(v) || 0) * 100) / 100;
-    return (n % 1 === 0 ? String(n) : n.toFixed(2));
-  };
+    var whole = Math.floor(Math.abs(n));
+    var frac = Math.round((Math.abs(n) - whole) * 100);
+    var s = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    if (frac) s += ',' + (frac < 10 ? '0' + frac : String(frac)).replace(/0$/, '');
+    return (n < 0 ? '−' : '') + s;
+  }
+
+  function haptic(kind) {
+    if (!tg || !tg.HapticFeedback) return;
+    try {
+      if (kind === 'tap') tg.HapticFeedback.impactOccurred('light');
+      else tg.HapticFeedback.notificationOccurred(kind);
+    } catch (ignore) {}
+  }
+
+  /* ─────────────────────────── тема ─────────────────────────── */
+
+  // Тему беремо з Telegram, а кольори — свої. Дашборд і форма мусять
+  // виглядати як одна система; підлаштовуватись під тему чату означало б
+  // щоразу інший бренд.
+  function applyTheme() {
+    var dark = tg && tg.colorScheme === 'dark';
+    if (!tg) dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    paintChrome();
+  }
+
+  /** Колір службових смуг Telegram під поточний екран. */
+  function paintChrome() {
+    if (!tg) return;
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var grad = document.body.classList.contains('on-grad');
+    var c = grad ? (dark ? '#1e1a28' : '#e3d3f5') : (dark ? '#000000' : '#ffffff');
+    try { tg.setBackgroundColor(c); tg.setHeaderColor(c); } catch (ignore) {}
+  }
+
+  function gradScreen(on) {
+    document.body.classList.toggle('on-grad', on);
+    paintChrome();
+  }
+
+  /* ─────────────────────────── старт ─────────────────────────── */
 
   if (!tg || !tg.initData) {
+    applyTheme();
     hide('loading'); show('fatal');
     $('fatalText').textContent = 'Цю форму треба відкривати з Telegram — через кнопку в робочому чаті.';
     return;
   }
   tg.ready();
   tg.expand();
+  applyTheme();
+  tg.onEvent('themeChanged', applyTheme);
 
   function fail(msg) {
-    hide('loading'); hide('form'); hide('totalBar');
+    hide('loading'); hide('form'); hide('totalBar'); hide('pick');
+    gradScreen(false);
     show('fatal');
     $('fatalText').textContent = msg;
   }
@@ -362,8 +605,8 @@
         try { cb(data); }
         catch (e) { fail('Помилка у формі: ' + (e && e.message ? e.message : e)); throw e; }
       })
-      .catch(function (e) {
-        if (!$('fatal').classList.contains('hidden')) return;   // вже показали причину
+      .catch(function () {
+        if (!$('fatal').classList.contains('hidden')) return;   // причину вже показали
         fail('Немає звʼязку з сервером. Перевір інтернет і спробуй ще раз.');
       });
   }
@@ -382,6 +625,7 @@
   /* ────────────────────── вибір себе зі списку ────────────────────── */
 
   function renderPick(list) {
+    gradScreen(true);
     show('pick');
     if (!list.length) { hide('pickSearch'); show('pickEmpty'); return; }
 
@@ -396,21 +640,32 @@
 
     list.forEach(function (p) {
       var b = document.createElement('button');
-      b.appendChild(document.createTextNode(p.name));
+      b.type = 'button';
+      b.className = 'name-btn';
+
+      var t = document.createElement('span');
+      t.textContent = p.name;
+      b.appendChild(t);
+
+      var arrow = document.createElement('span');
+      arrow.innerHTML = '<svg width="8" height="13" viewBox="0 0 8 13" fill="none">' +
+        '<path d="M1.2 1.2L6.5 6.5 1.2 11.8" stroke="currentColor" stroke-width="1.8"/></svg>';
+      b.appendChild(arrow.firstChild);
+
       b.onclick = function () {
         b.disabled = true;
-        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        haptic('tap');
         api('bind', { userId: p.userId }, function (r) {
           if (!r || !r.ok) {
             b.disabled = false;
             tg.showAlert((r && r.message) || 'Не вдалося привʼязати.');
             return;
           }
-          hide('pick'); show('loading');
+          hide('pick'); gradScreen(false); show('loading');
           api('init', {}, function (r2) {
             hide('loading');
             if (r2 && r2.ok && r2.bound) startForm(r2);
-            else { show('fatal'); $('fatalText').textContent = 'Привʼязано, але форма не завантажилась. Відкрий заново.'; }
+            else fail('Привʼязано, але форма не завантажилась. Закрий і відкрий заново.');
           });
         });
       };
@@ -423,23 +678,31 @@
   function startForm(res) {
     show('form');
     show('totalBar');
+
     $('who').textContent = res.name;
-    $('periodLine').textContent = 'Звіт за ' + res.period.label;
+    $('periodLine').textContent = res.period.label;
     state.disclaimer = res.disclaimer || '';
-    if (res.disclaimerShort) $('disclaimerBar').textContent = '⚠️ ' + res.disclaimerShort;
+    if (res.disclaimerShort) {
+      $('formDisclaimer').textContent = res.disclaimerShort.charAt(0).toUpperCase() + res.disclaimerShort.slice(1) + '.';
+      show('formDisclaimer');
+    }
     state.fields = res.fields || [];
     state.roundUpTo = res.roundUpTo || 0;
     state.noRate = !!res.noRate;
+    state.hints = res.bonusHints || [];
+    if (res.limits) {
+      state.limits.maxCount = Number(res.limits.maxCount) || state.limits.maxCount;
+      state.limits.maxMoney = Number(res.limits.maxMoney) || state.limits.maxMoney;
+    }
 
     if (state.noRate) {
-      $('rateNotice').classList.remove('hidden');
+      show('rateNotice');
       $('rateNotice').textContent = 'Твоя ставка за 1 ЖК ще не заведена — сума порахується без неї. ' +
         'Звіт усе одно подавай, керівник це побачить.';
     }
 
     var box = $('metrics');
     state.groups = res.groups || [{ key: 'main', gate: null }];
-
     var r = res.report;
 
     state.groups.forEach(function (g) {
@@ -447,67 +710,53 @@
       if (!mine.length) return;
 
       var body = document.createElement('div');
-      body.className = 'groupBody';
       body.id = 'group_' + g.key;
-
-      mine.forEach(function (f) { body.appendChild(buildField(f)); });
+      mine.forEach(function (f) { body.appendChild(buildMetric(f)); });
 
       if (!g.gate) { box.appendChild(body); return; }
-      body.className = 'groupBody gated';
 
-      // Група з питанням «чи було?» — деталі ховаємо, поки не «Так».
-      var gate = document.createElement('div');
-      gate.className = 'gate';
+      // Група з питанням «чи було?». Раніше це була коробка з парою кнопок
+      // «Ні / Так» — вона займала висоту цілого поля, щоб отримати відповідь,
+      // яка в 90% випадків «ні». Тепер це один рядок із прапорцем: не
+      // тапнули — значить не було.
+      body.className = 'nested';
+      body.classList.add('hidden');
 
-      var q = document.createElement('div');
-      q.className = 'q';
-      q.textContent = g.gate;
-      gate.appendChild(q);
-
-      if (g.hint) {
-        var h = document.createElement('div');
-        h.className = 'h';
-        h.textContent = g.hint;
-        gate.appendChild(h);
-      }
-
-      var tg2 = document.createElement('div');
-      tg2.className = 'toggle';
-      var bNo = document.createElement('button');
-      bNo.type = 'button'; bNo.className = 'no'; bNo.textContent = 'Ні';
-      var bYes = document.createElement('button');
-      bYes.type = 'button'; bYes.className = 'yes'; bYes.textContent = 'Так';
-      tg2.appendChild(bNo); tg2.appendChild(bYes);
-      gate.appendChild(tg2);
-
-      box.appendChild(gate);
+      var gate = buildCheckRow(g.gate, g.hint);
+      box.appendChild(gate.el);
       box.appendChild(body);
+
+      // Попередження про підмножину: ЖК із 16+ ракурсами не може бути
+      // більше, ніж усіх сфотографованих. Не блокує — лише показує,
+      // бо помилково заблокований звіт коштує дорожче за криве число.
+      var warn = document.createElement('div');
+      warn.className = 'warnline';
+      warn.id = 'warn_' + g.key;
+      body.appendChild(warn);
 
       var setOpen = function (open) {
         state.open[g.key] = open;
-        gate.classList.toggle('open', open);
-        bYes.classList.toggle('on', open);
-        bNo.classList.toggle('on', !open);
+        gate.set(open);
         body.classList.toggle('hidden', !open);
         if (!open) {
-          // Закрили — значить нічого не було. Чистимо, щоб не тягнути
-          // випадково введені числа у підсумок.
+          // Закрили — значить нічого не було. Чистимо, щоб випадково
+          // введені числа не тягнулися в підсумок.
           mine.forEach(function (f) { $(f.key).value = ''; clearErr(f.key); });
         }
         recalc();
       };
-
-      bYes.onclick = function () { setOpen(true); };
-      bNo.onclick = function () { setOpen(false); };
+      gate.el.onclick = function () { haptic('tap'); setOpen(!state.open[g.key]); };
+      gate.el.onkeydown = function (e) {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); gate.el.onclick(); }
+      };
       setOpen(false);
       state.gates[g.key] = setOpen;
     });
 
     if (r) {
-      $('editNotice').classList.remove('hidden');
+      show('editNotice');
       $('editNotice').textContent = 'Звіт за цей місяць уже є (оновлено ' + r.updated +
         '). Поля підставлені — зміни й надішли, старий буде перезаписаний.';
-      // Відкриваємо групи, в яких минулого разу були ненульові значення.
       state.groups.forEach(function (g) {
         if (!g.gate) return;
         var any = state.fields.some(function (f) {
@@ -525,34 +774,43 @@
       });
     }
 
-    renderPriceList(res.bonusHints || []);
-    initBonuses(r);
+    renderPicks();
+    restoreBonuses(r);
 
     ['transport', 'other'].forEach(function (k) {
       $(k).addEventListener('input', function () { clearErr(k); recalc(); });
     });
     $('comment').addEventListener('input', function () { clearErr('comment'); });
 
+    var otherGate = {
+      el: $('otherGate'),
+      set: function (on) { $('otherGate').setAttribute('aria-checked', on ? 'true' : 'false'); }
+    };
     var setOther = function (open) {
       state.otherOpen = open;
-      $('otherYes').classList.toggle('on', open);
-      $('otherNo').classList.toggle('on', !open);
-      $('otherField').classList.toggle('hidden', !open);
-      $('commentField').classList.toggle('hidden', !open);
+      otherGate.set(open);
+      $('otherBody').classList.toggle('hidden', !open);
       if (!open) {
         $('other').value = ''; $('comment').value = '';
         clearErr('other'); clearErr('comment');
       }
       recalc();
     };
-    $('otherYes').onclick = function () { setOther(true); };
-    $('otherNo').onclick = function () { setOther(false); };
-    state.setOther = setOther;
+    otherGate.el.onclick = function () { haptic('tap'); setOther(!state.otherOpen); };
+    otherGate.el.onkeydown = function (e) {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setOther(!state.otherOpen); }
+    };
     setOther(Number(r && r.other) > 0);
 
     recalc();
 
+    // Половина заповненої форми не має губитися від випадкового свайпу вниз.
+    try { tg.enableClosingConfirmation(); } catch (ignore) {}
+
     if (tg.MainButton) {
+      try {
+        tg.MainButton.setParams({ color: '#ff6a00', text_color: '#000000' });
+      } catch (ignore) {}
       tg.MainButton.setText('Надіслати звіт');
       tg.MainButton.onClick(submit);
       tg.MainButton.show();
@@ -562,139 +820,257 @@
     }
   }
 
-  function buildField(f) {
-    var wrap = document.createElement('div');
-    wrap.className = 'field';
+  /** Рядок із квадратним прапорцем. Повертає {el, set}. */
+  function buildCheckRow(question, hint) {
+    var el = document.createElement('div');
+    el.className = 'cbrow';
+    el.setAttribute('role', 'checkbox');
+    el.setAttribute('aria-checked', 'false');
+    el.setAttribute('tabindex', '0');
 
-    var lab = document.createElement('label');
-    lab.appendChild(document.createTextNode(f.label));
+    var boxEl = document.createElement('span');
+    boxEl.className = 'cbox';
+    boxEl.setAttribute('aria-hidden', 'true');
+    boxEl.innerHTML = '<svg width="15" height="12" viewBox="0 0 15 12" fill="none">' +
+      '<path d="M1.5 6.2L5.3 10 13.5 1.8" stroke="#000" stroke-width="2.4" stroke-linecap="square"/></svg>';
 
-    var tip = document.createElement('div');
-    tip.className = 'tip';
-    if (f.hint) tip.appendChild(document.createTextNode(f.hint));
-    if (f.per > 0) {
-      if (f.hint) tip.appendChild(document.createTextNode(' · '));
-      var per = document.createElement('span');
-      per.className = 'per';
-      per.textContent = f.per + ' грн за кожен';
-      tip.appendChild(per);
+    var txt = document.createElement('span');
+    txt.className = 'cb-txt';
+    var q = document.createElement('span');
+    q.className = 'cb-q';
+    q.textContent = question;
+    txt.appendChild(q);
+    if (hint) {
+      var h = document.createElement('span');
+      h.className = 'cb-h';
+      h.textContent = hint;
+      txt.appendChild(h);
     }
-    lab.appendChild(tip);
+
+    el.appendChild(boxEl);
+    el.appendChild(txt);
+    return { el: el, set: function (on) { el.setAttribute('aria-checked', on ? 'true' : 'false'); } };
+  }
+
+  function buildMetric(f) {
+    var wrap = document.createElement('div');
+    wrap.className = 'metric';
+
+    var top = document.createElement('div');
+    top.className = 'm-top';
+
+    var lab = document.createElement('div');
+    lab.className = 'm-label';
+    lab.textContent = f.label;
+    top.appendChild(lab);
+
+    if (f.per > 0) {
+      var rate = document.createElement('div');
+      rate.className = 'm-rate';
+      rate.textContent = money(f.per) + ' грн / шт';
+      top.appendChild(rate);
+    }
+    wrap.appendChild(top);
+
+    if (f.hint) {
+      var hint = document.createElement('div');
+      hint.className = 'm-hint';
+      hint.textContent = f.hint;
+      wrap.appendChild(hint);
+    }
+
+    var row = document.createElement('div');
+    row.className = 'm-row';
 
     var inp = document.createElement('input');
     inp.id = f.key;
+    inp.className = 'inp-fig';
     inp.type = 'text';
     inp.inputMode = 'numeric';
     inp.placeholder = '0';
     inp.addEventListener('input', function () { clearErr(f.key); recalc(); });
+    row.appendChild(inp);
 
     var sum = document.createElement('div');
-    sum.className = 'lineSum';
+    sum.className = 'm-sum';
     sum.id = 'sum_' + f.key;
+    row.appendChild(sum);
+
+    wrap.appendChild(row);
 
     var err = document.createElement('div');
     err.className = 'err';
     err.id = 'err_' + f.key;
+    wrap.appendChild(err);
 
-    wrap.appendChild(lab); wrap.appendChild(inp); wrap.appendChild(sum); wrap.appendChild(err);
     return wrap;
   }
 
   /* ──────────────────────────── бонуси ──────────────────────────── */
+  /* Раніше над формою висів прайс-лист, а людина переписувала з нього суму
+     в поле руками. Тепер тариф стоїть просто на кнопці, якою бонус додають:
+     тап — і сума вже в рядку, лишається дописати, який це обʼєкт. */
 
-  function renderPriceList(hints) {
-    var box = $('priceList');
+  var bonusSeq = 0;
+
+  function renderPicks() {
+    var box = $('bonusPicks');
     box.textContent = '';
-    if (!hints.length) return;
 
-    var h = document.createElement('div');
-    h.className = 'head';
-    h.textContent = 'Скільки за що нараховують';
-    box.appendChild(h);
-
-    hints.forEach(function (x) {
-      var row = document.createElement('div');
-      row.className = 'row';
-      var l = document.createElement('span');
-      l.textContent = x.label;
-      var a = document.createElement('b');
-      a.textContent = x.amount + ' грн';
-      row.appendChild(l); row.appendChild(a);
-      box.appendChild(row);
+    state.hints.forEach(function (h) {
+      box.appendChild(pickRow(h.label, h.amount, function () {
+        addBonus({ reason: h.label, amount: String(h.amount), obj: '' });
+      }));
     });
+
+    box.appendChild(pickRow('Щось інше', null, function () {
+      addBonus({ reason: null, amount: '', obj: '' });
+    }));
   }
 
-  function addBonusRow(amount, why) {
-    var wrap = document.createElement('div');
-    wrap.className = 'bonusRow';
+  function pickRow(label, amount, onTap) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pick-row';
 
-    var amt = document.createElement('input');
-    amt.className = 'amt'; amt.type = 'text'; amt.inputMode = 'decimal';
-    amt.placeholder = 'Сума, грн'; amt.value = amount || '';
-    amt.addEventListener('input', function () { clearErr('bonus'); recalc(); });
+    var plus = document.createElement('span');
+    plus.className = 'pick-plus';
+    plus.setAttribute('aria-hidden', 'true');
+    plus.textContent = '+';
+    b.appendChild(plus);
 
-    var why2 = document.createElement('input');
-    why2.className = 'why'; why2.type = 'text';
-    why2.placeholder = 'За що? Який ЖК, що саме';
-    why2.value = why || '';
-    why2.addEventListener('input', function () { clearErr('bonus'); });
+    var t = document.createElement('span');
+    t.className = 'pick-l';
+    t.textContent = label;
+    b.appendChild(t);
 
-    var del = document.createElement('button');
-    del.type = 'button'; del.className = 'del'; del.textContent = '×';
-    del.onclick = function () {
-      wrap.parentNode.removeChild(wrap);
-      if (!$('bonusRows').children.length) addBonusRow('', '');
-      recalc();
+    var a = document.createElement('span');
+    a.className = 'pick-a';
+    a.textContent = (amount === null || amount === undefined) ? 'своя сума' : money(amount) + ' грн';
+    b.appendChild(a);
+
+    b.onclick = function () {
+      haptic('tap');
+      onTap();
+      clearErr('bonus');
+      // Новий рядок зʼявляється НИЖЧЕ прайсу, тобто поза екраном. Без
+      // прокрутки тап виглядає як «нічого не сталося». Фокус ставимо одразу
+      // в «який обʼєкт»: сума вже підставлена, лишилось саме це поле, і
+      // клавіатура відкривається тим самим тапом, а не наступним.
+      var last = $('bonusRows').lastElementChild;
+      if (last) {
+        if (last.scrollIntoView) last.scrollIntoView({ block: 'center' });
+        var obj = last.querySelector('.inp-text');
+        if (obj) { try { obj.focus(); } catch (ignore) {} }
+      }
     };
+    return b;
+  }
+
+  function addBonus(data) {
+    var item = {
+      id: 'b' + (++bonusSeq),
+      reason: data.reason || null,
+      amount: data.amount || '',
+      obj: data.obj || ''
+    };
+    state.bonuses.push(item);
+    $('bonusRows').appendChild(buildBonusRow(item));
+    recalc();
+    return item;
+  }
+
+  function buildBonusRow(item) {
+    var wrap = document.createElement('div');
+    wrap.className = 'brow';
+    wrap.id = 'row_' + item.id;
 
     var top = document.createElement('div');
-    top.className = 'top';
-    top.appendChild(amt); top.appendChild(del);
+    top.className = 'brow-top';
 
-    wrap.appendChild(top); wrap.appendChild(why2);
-    $('bonusRows').appendChild(wrap);
+    var why = document.createElement('div');
+    why.className = 'brow-why';
+    why.textContent = item.reason || 'Інший бонус';
+    top.appendChild(why);
+
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'brow-del';
+    del.setAttribute('aria-label', 'Прибрати бонус');
+    del.textContent = '×';
+    del.onclick = function () {
+      haptic('tap');
+      state.bonuses = state.bonuses.filter(function (b) { return b.id !== item.id; });
+      wrap.parentNode.removeChild(wrap);
+      clearErr('bonus');
+      recalc();
+    };
+    top.appendChild(del);
+    wrap.appendChild(top);
+
+    var amtRow = document.createElement('div');
+    amtRow.className = 'brow-amt';
+
+    var amt = document.createElement('input');
+    amt.className = 'inp-fig sm';
+    amt.type = 'text';
+    amt.inputMode = 'decimal';
+    amt.placeholder = '0';
+    amt.value = item.amount;
+    amt.addEventListener('input', function () {
+      item.amount = this.value;
+      this.classList.remove('bad');
+      clearErr('bonus');
+      recalc();
+    });
+    amtRow.appendChild(amt);
+
+    var cur = document.createElement('span');
+    cur.className = 'cur';
+    cur.textContent = 'грн';
+    amtRow.appendChild(cur);
+    wrap.appendChild(amtRow);
+
+    var obj = document.createElement('input');
+    obj.className = 'inp-text';
+    obj.type = 'text';
+    obj.style.marginTop = '12px';
+    obj.placeholder = item.reason ? 'Який ЖК, обʼєкт' : 'За що саме';
+    obj.value = item.obj;
+    obj.addEventListener('input', function () {
+      item.obj = this.value;
+      this.classList.remove('bad');
+      clearErr('bonus');
+    });
+    wrap.appendChild(obj);
+
+    item._amtEl = amt;
+    item._objEl = obj;
     return wrap;
   }
 
-  function readBonuses() {
-    var rows = $('bonusRows').children;
-    var out = [];
-    for (var i = 0; i < rows.length; i++) {
-      out.push({
-        amount: rows[i].children[0].children[0].value,   // top > amt
-        why: rows[i].children[1].value,                  // why
-        _el: rows[i]
-      });
-    }
-    return out;
-  }
-
-  function initBonuses(r) {
-    var setB = function (open) {
-      state.bonusOpen = open;
-      $('bonusGate').classList.toggle('open', open);
-      $('bonusYes').classList.toggle('on', open);
-      $('bonusNo').classList.toggle('on', !open);
-      $('bonusBody').classList.toggle('hidden', !open);
-      if (!open) {
-        $('bonusRows').textContent = '';
-        addBonusRow('', '');
-        clearErr('bonus');
-      }
-      recalc();
-    };
-    $('bonusYes').onclick = function () { setB(true); };
-    $('bonusNo').onclick = function () { setB(false); };
-    $('addBonus').onclick = function () { addBonusRow('', ''); };
-
+  /**
+   * Відновлення з таблиці. Бекенд зберігає бонус одним рядком
+   * «<причина> — <обʼєкт>»; якщо причина збігається з тарифом, повертаємо
+   * рядок у той самий вигляд, у якому його створювали. Не збіглась —
+   * це «Інше» з довільним текстом.
+   */
+  function restoreBonuses(r) {
     var existing = (r && r.bonuses) || [];
-    if (existing.length) {
-      existing.forEach(function (b) { addBonusRow(b.amount, b.why); });
-      setB(true);
-    } else {
-      addBonusRow('', '');
-      setB(false);
-    }
+    existing.forEach(function (b) {
+      var why = String(b.why || '');
+      var matched = null;
+      for (var i = 0; i < state.hints.length; i++) {
+        var pre = state.hints[i].label + ' — ';
+        if (why.indexOf(pre) === 0) {
+          matched = { reason: state.hints[i].label, obj: why.slice(pre.length) };
+          break;
+        }
+      }
+      addBonus(matched
+        ? { reason: matched.reason, amount: String(b.amount), obj: matched.obj }
+        : { reason: null, amount: String(b.amount), obj: why });
+    });
   }
 
   /* ───────────────────── живий підрахунок суми ───────────────────── */
@@ -703,7 +1079,10 @@
   function num(id) {
     var el = $(id);
     if (!el) return 0;
-    var t = String(el.value).trim().replace(/[\s ]/g, '').replace(',', '.');
+    return toNum(el.value);
+  }
+  function toNum(raw) {
+    var t = String(raw).trim().replace(/[\s  ]/g, '').replace(',', '.');
     var n = parseFloat(t);
     return isNaN(n) || n < 0 ? 0 : n;
   }
@@ -724,32 +1103,56 @@
       var line = $('sum_' + f.key);
       if (!isFieldActive(f)) { if (line) line.textContent = ''; return; }
       var n = num(f.key);
-      var s2 = n * (f.per || 0);
-      sum += s2;
-      if (line) line.textContent = (n > 0 && f.per > 0) ? ('= ' + money(s2) + ' грн') : '';
+      var s = n * (f.per || 0);
+      sum += s;
+      if (line) line.textContent = (n > 0 && f.per > 0) ? ('= ' + money(s) + ' грн') : '';
     });
-    if (state.bonusOpen) {
-      readBonuses().forEach(function (b) {
-        var n = parseFloat(String(b.amount).replace(',', '.'));
-        if (!isNaN(n) && n > 0) sum += n;
-      });
-    }
+
+    state.bonuses.forEach(function (b) { sum += toNum(b.amount); });
     sum += num('transport') + (state.otherOpen ? num('other') : 0);
 
     var rounded = sum;
     if (state.roundUpTo > 0) rounded = Math.ceil(sum / state.roundUpTo) * state.roundUpTo;
 
-    $('totalValue').textContent = money(rounded) + ' грн';
+    $('totalValue').textContent = money(rounded);
+
     var bits = [];
-    if (rounded > sum) bits.push('округлено вгору з ' + money(sum));
+    if (rounded > sum) bits.push('округлено вгору з ' + money(sum) + ' грн');
     if (state.noRate) bits.push('без ставки за ЖК');
     $('totalHint').textContent = bits.join(' · ');
+
+    checkSubset();
+  }
+
+  /**
+   * ЖК із 16–20 і з 20+ ракурсами — це підмножини сфотографованих, і між
+   * собою вони не перетинаються. Отже p16 + p20 ніколи не більше за zk.
+   * Показуємо, але не блокуємо: помилково заблокований звіт — це дзвінок
+   * керівнику, а криве число видно і в таблиці.
+   */
+  function checkSubset() {
+    var has = function (k) { return state.fields.some(function (f) { return f.key === k; }); };
+    if (!has('zk') || !has('p16') || !has('p20')) return;
+
+    var group = null;
+    state.fields.forEach(function (f) { if (f.key === 'p16') group = f.group; });
+    var el = group ? $('warn_' + group) : null;
+    if (!el) return;
+
+    var active = state.fields.some(function (f) { return f.key === 'p16' && isFieldActive(f); });
+    var total = num('zk'), part = num('p16') + num('p20');
+
+    if (active && total > 0 && part > total) {
+      el.textContent = 'Разом ' + part + ' ЖК із ракурсами, а сфотографовано ' + total +
+        '. Перевір — це мають бути ті самі ЖК, порахуй їх ще раз.';
+      el.classList.add('on');
+    } else {
+      el.classList.remove('on');
+    }
   }
 
   /* ─────────────────────────── валідація ─────────────────────────── */
 
-  // Поля з таким id може не бути (напр. 'bonus' — це блок, а не одне поле),
-  // тому обидві функції мають переживати його відсутність.
   function setErr(id, msg) {
     var f = $(id);
     if (f) f.classList.add('bad');
@@ -767,16 +1170,29 @@
     var t = String($(id).value).trim().replace(/[\s ]/g, '');
     if (t === '') return 0;                        // порожнє = нуль, не примушуємо
     if (!/^\d{1,5}$/.test(t)) { setErr(id, 'Тільки ціле число'); return null; }
-    if (parseInt(t, 10) > 2000) { setErr(id, 'Забагато — перевір, чи не помилка'); return null; }
-    return parseInt(t, 10);
+    var n = parseInt(t, 10);
+    if (n > state.limits.maxCount) {
+      setErr(id, 'Забагато — більше ' + state.limits.maxCount + ' не приймається');
+      return null;
+    }
+    return n;
   }
   function readMoney(id) {
     var t = String($(id).value).trim().replace(/[\s ]/g, '').replace(',', '.');
     if (t === '') return 0;
     if (!/^\d{1,7}(\.\d{1,2})?$/.test(t)) { setErr(id, 'Сума в гривнях, напр. 1450 або 1450.50'); return null; }
     var n = parseFloat(t);
-    if (n > 200000) { setErr(id, 'Забагато — перевір, чи не помилка'); return null; }
+    if (n > state.limits.maxMoney) {
+      setErr(id, 'Забагато — більше ' + state.limits.maxMoney + ' грн не приймається');
+      return null;
+    }
     return n;
+  }
+
+  function focusFirstBad() {
+    haptic('error');
+    var el = document.querySelector('.bad');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   /* ───────────────────────── надсилання ───────────────────────── */
@@ -787,12 +1203,14 @@
     if (sending) return;
 
     var v = {}, bad = false;
+
     state.fields.forEach(function (f) {
       if (!isFieldActive(f)) { v[f.key] = 0; return; }   // група закрита = нуль
       var n = readCount(f.key);
       if (n === null) bad = true;
       v[f.key] = n;
     });
+
     var t = readMoney('transport'); if (t === null) bad = true;
     var o = state.otherOpen ? readMoney('other') : 0;
     if (o === null) bad = true;
@@ -802,119 +1220,139 @@
       setErr('comment', 'Напиши кілька слів, на що пішли ці гроші');
       bad = true;
     }
-    if (bad) {
-      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-      var firstBad = document.querySelector('.bad');
-      if (firstBad) firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
 
-    v.bonuses = [];
-    if (state.bonusOpen) {
-      var bs = readBonuses();
-      for (var i = 0; i < bs.length; i++) {
-        var raw = String(bs[i].amount).trim().replace(',', '.');
-        var why = String(bs[i].why).trim();
-        if (!raw && !why) continue;                       // порожній рядок — пропускаємо
-        var n = parseFloat(raw);
-        if (!raw || isNaN(n) || n <= 0) {
-          setErr('bonus', 'Вкажи суму бонусу числом, напр. 300');
-          bs[i]._el.children[0].children[0].classList.add('bad');
-          bad = true; continue;
-        }
-        if (why.length < 3) {
-          setErr('bonus', 'Напиши, за що бонус — який ЖК і що саме');
-          bs[i]._el.children[1].classList.add('bad');
-          bad = true; continue;
-        }
-        v.bonuses.push({ amount: n, why: why });
-      }
-      if (bad) {
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    // Бонуси. Порожній рядок, який людина додала й передумала, просто
+    // пропускаємо — змушувати його видаляти немає сенсу.
+    var bonuses = [];
+    state.bonuses.forEach(function (b) {
+      var amount = String(b.amount).trim();
+      var obj = String(b.obj).trim().replace(/;/g, ',');   // «;» — розділювач у таблиці
+      if (!amount && !obj) return;
+
+      var n = toNum(amount);
+      if (!amount || n <= 0) {
+        setErr('bonus', 'Вкажи суму бонусу числом, напр. 300');
+        if (b._amtEl) b._amtEl.classList.add('bad');
+        bad = true;
         return;
       }
-    }
+      if (obj.length < 2) {
+        setErr('bonus', b.reason ? 'Напиши, який це обʼєкт' : 'Напиши, за що бонус');
+        if (b._objEl) b._objEl.classList.add('bad');
+        bad = true;
+        return;
+      }
+      bonuses.push({ amount: n, why: b.reason ? (b.reason + ' — ' + obj) : obj });
+    });
 
-    v.transport = t; v.other = o; v.comment = comment;
+    if (bad) { focusFirstBad(); return; }
+
+    v.transport = t;
+    v.other = o;
+    v.comment = comment;
+    v.bonuses = bonuses;
+
     lastPayload = v;
     sendNow();
   }
 
+  function busy(on) {
+    sending = on;
+    if (tg.MainButton) {
+      if (on) { tg.MainButton.showProgress(true); tg.MainButton.disable(); }
+      else { tg.MainButton.hideProgress(); tg.MainButton.enable(); }
+    } else {
+      $('fallbackSubmit').disabled = on;
+      $('fallbackSubmit').textContent = on ? 'Надсилаю…' : 'Надіслати звіт';
+    }
+  }
+
   function sendNow() {
-    sending = true;
-    if (tg.MainButton) { tg.MainButton.showProgress(true); tg.MainButton.disable(); }
-    else $('fallbackSubmit').disabled = true;
+    busy(true);
 
     api('submit', { payload: lastPayload }, function (res) {
-      sending = false;
-      if (tg.MainButton) { tg.MainButton.hideProgress(); tg.MainButton.enable(); }
-      else $('fallbackSubmit').disabled = false;
+      busy(false);
 
       if (!res || !res.ok) {
         if (res && res.error === 'busy' && busyRetries < 2) {
           busyRetries++;
-          if (tg.MainButton) tg.MainButton.showProgress(true);
+          busy(true);
           setTimeout(sendNow, 2500);
           return;
         }
         busyRetries = 0;
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        haptic('error');
         tg.showAlert((res && res.message) || 'Не вдалося зберегти. Спробуй ще раз.');
         return;
       }
 
       busyRetries = 0;
-      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      haptic('success');
+      try { tg.disableClosingConfirmation(); } catch (ignore) {}
       if (tg.MainButton) tg.MainButton.hide();
-      hide('form'); hide('totalBar'); show('done');
 
-      $('doneText').textContent = (res.updated ? 'Звіт за ' + res.label + ' оновлено.'
-                                              : 'Звіт за ' + res.label + ' прийнято. Дякую!');
-
-      var dtxt = res.disclaimer || state.disclaimer;
-      if (dtxt) {
-        $('doneDisclaimer').textContent = '⚠️ ' + dtxt;
-        $('doneDisclaimer').classList.remove('hidden');
-      }
-      var b = $('doneBreakdown');
-      b.textContent = '';
-
-      (res.lines || []).forEach(function (l) {
-        var row = document.createElement('div');
-        row.className = 'line';
-
-        var left = document.createElement('div');
-        left.className = 'lineLeft';
-        var t1 = document.createElement('div');
-        t1.className = 'lineLabel';
-        t1.textContent = l.label;
-        left.appendChild(t1);
-        if (l.detail) {
-          var t2 = document.createElement('div');
-          t2.className = 'lineDetail';
-          t2.textContent = l.detail;
-          left.appendChild(t2);
-        }
-
-        var right = document.createElement('div');
-        right.className = 'lineAmount';
-        right.textContent = (l.amount === null || l.amount === undefined)
-          ? '' : money(l.amount) + ' грн';
-
-        row.appendChild(left); row.appendChild(right);
-        b.appendChild(row);
-      });
-
-      var tot = document.createElement('div');
-      tot.className = 'doneTotal';
-      var cap = document.createElement('span');
-      cap.className = 'cap';
-      cap.textContent = 'Разом';
-      var val = document.createElement('span');
-      val.textContent = money(res.total) + ' грн';
-      tot.appendChild(cap); tot.appendChild(val);
-      b.appendChild(tot);
+      renderDone(res);
     });
+  }
+
+  function renderDone(res) {
+    hide('form'); hide('totalBar');
+    gradScreen(true);
+    show('done');
+    window.scrollTo(0, 0);
+
+    $('doneKind').textContent = res.updated ? 'Звіт оновлено' : 'Звіт прийнято';
+    $('donePeriod').textContent = res.label;
+    $('doneTotal').textContent = money(res.total);
+    $('doneText').textContent = res.updated
+      ? 'Старий звіт за цей місяць перезаписано.'
+      : 'Дякую! Керівник уже бачить його в таблиці.';
+
+    var b = $('doneBreakdown');
+    b.textContent = '';
+
+    (res.lines || []).forEach(function (l) {
+      var row = document.createElement('div');
+      row.className = 'd-line';
+
+      var left = document.createElement('div');
+      left.className = 'd-l';
+      var t1 = document.createElement('div');
+      t1.className = 'd-label';
+      t1.textContent = l.label;
+      left.appendChild(t1);
+      if (l.detail) {
+        var t2 = document.createElement('div');
+        t2.className = 'd-detail';
+        t2.textContent = l.detail;
+        left.appendChild(t2);
+      }
+
+      var right = document.createElement('div');
+      right.className = 'd-amount';
+      right.textContent = (l.amount === null || l.amount === undefined) ? '' : money(l.amount) + ' грн';
+
+      row.appendChild(left);
+      row.appendChild(right);
+      b.appendChild(row);
+    });
+
+    var tot = document.createElement('div');
+    tot.className = 'd-total';
+    var cap = document.createElement('span');
+    cap.textContent = 'Разом';
+    var val = document.createElement('span');
+    val.className = 'num';
+    val.textContent = money(res.total) + ' грн';
+    tot.appendChild(cap);
+    tot.appendChild(val);
+    b.appendChild(tot);
+
+    var dtxt = res.disclaimer || state.disclaimer;
+    if (dtxt) {
+      $('doneDisclaimer').textContent = dtxt;
+      show('doneDisclaimer');
+    }
   }
 })();
 </script>
